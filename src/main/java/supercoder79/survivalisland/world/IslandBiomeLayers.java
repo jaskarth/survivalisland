@@ -34,8 +34,6 @@ public class IslandBiomeLayers {
         if (SurvivalIsland.CONFIG.generateBeaches)
             layerFactory = AddEdgeBiomesLayer.INSTANCE.create(contextProvider.apply(4L), layerFactory);
 
-        layerFactory = ScaleLayer.NORMAL.create(contextProvider.apply(7L), layerFactory);
-
 
         return layerFactory;
     }
