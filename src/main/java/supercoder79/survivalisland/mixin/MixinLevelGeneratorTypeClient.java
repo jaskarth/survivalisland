@@ -1,5 +1,7 @@
 package supercoder79.survivalisland.mixin;
 
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
 import supercoder79.survivalisland.world.WorldType;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,7 +28,7 @@ public class MixinLevelGeneratorTypeClient {
     //dirty hack but i can't be assed to figure out why the lang file won't work
     @Inject(method = "getTranslationKey", at = @At("HEAD"), cancellable = true)
     @Environment(EnvType.CLIENT)
-    void getTranslationKey(CallbackInfoReturnable<String> cir) {
-        if (this.name.equals("survivalisland")) cir.setReturnValue("Survival Island");
+    void getTranslationKey(CallbackInfoReturnable<Text> cir) {
+        if (this.name.equals("survivalisland")) cir.setReturnValue(new LiteralText("Survival Island"));
     }
 }

@@ -15,7 +15,7 @@ public class IslandBiomeSource extends BiomeSource {
 
     public IslandBiomeSource(VanillaLayeredBiomeSourceConfig config) {
         super(BIOMES);
-        this.biomeSampler = IslandBiomeLayers.build(config.getSeed(), config.getGeneratorType(), config.getGeneratorSettings());
+        this.biomeSampler = IslandBiomeLayers.build(config.getSeed(), config.getGeneratorType(), config.getGeneratorConfig());
     }
 
     public Biome getBiomeForNoiseGen(int biomeX, int biomeY, int biomeZ) {

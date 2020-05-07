@@ -2,7 +2,7 @@ package supercoder79.survivalisland.world;
 
 import java.util.function.Supplier;
 
-import net.minecraft.world.World;
+import net.minecraft.world.IWorld;
 import net.minecraft.world.biome.source.BiomeSource;
 import net.minecraft.world.gen.chunk.ChunkGeneratorType;
 import net.minecraft.world.gen.chunk.OverworldChunkGenerator;
@@ -19,7 +19,7 @@ public class WorldGeneratorType extends ChunkGeneratorType<OverworldChunkGenerat
     }
 
     @Override
-    public OverworldChunkGenerator create(World world, BiomeSource biomeSource, OverworldChunkGeneratorConfig config) {
+    public OverworldChunkGenerator create(IWorld world, BiomeSource biomeSource, OverworldChunkGeneratorConfig config) {
         return new OverworldChunkGenerator(world, biomeSource, config);
     }
 }

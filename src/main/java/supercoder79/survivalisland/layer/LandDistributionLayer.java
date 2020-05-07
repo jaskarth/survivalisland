@@ -18,7 +18,7 @@ public enum LandDistributionLayer implements InitLayer {
 
     public <R extends LayerSampler> LayerFactory<R> create(LayerSampleContext<R> context) {
         biomes = Registry.BIOME.stream()
-                .filter(p -> p.getCategory() != Biome.Category.NETHER && p.getCategory() != Biome.Category.THEEND && p.getCategory() != Biome.Category.RIVER)
+                .filter(p -> p.getCategory() != Biome.Category.NETHER && p.getCategory() != Biome.Category.THEEND && p.getCategory() != Biome.Category.RIVER && p.getCategory() != Biome.Category.NONE)
                 .toArray(Biome[]::new);
 
         return () -> context.createSampler((x, z) -> {

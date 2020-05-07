@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "survivalisland",
-  "version": "0.1.0",
+  "version": "0.1.1",
 
   "name": "Survival Island",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "description": "Makes a configurable island generator!",
   "authors": [
     "SuperCoder79",
     "FoundSpore"
@@ -14,7 +14,7 @@
     "sources": ""
   },
 
-  "license": "CC0-1.0",
+  "license": "LGPLv3",
   "icon": "assets/modid/icon.png",
 
   "environment": "*",
