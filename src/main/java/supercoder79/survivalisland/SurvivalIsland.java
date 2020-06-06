@@ -1,25 +1,25 @@
 package supercoder79.survivalisland;
 
+import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
-import supercoder79.survivalisland.config.ConfigData;
-import supercoder79.survivalisland.config.ConfigSerializer;
-import supercoder79.survivalisland.world.WorldGeneratorType;
-import supercoder79.survivalisland.world.WorldType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
-import net.minecraft.world.gen.chunk.OverworldChunkGeneratorConfig;
+import supercoder79.survivalisland.config.ConfigData;
+import supercoder79.survivalisland.config.ConfigSerializer;
+import supercoder79.survivalisland.world.IslandBiomeSource;
+import supercoder79.survivalisland.world.IslandWorldType;
 
 public class SurvivalIsland implements ModInitializer {
 	public static ConfigData CONFIG;
-	public static WorldGeneratorType WORLDGEN_TYPE;
-	static WorldType<?> loadMeOnClientPls;
+	private static IslandWorldType worldType;
 
 	@Override
 	public void onInitialize() {
 		CONFIG = ConfigSerializer.init();
-
-		loadMeOnClientPls = WorldType.SURVIVAL_ISLAND;
-
-		WORLDGEN_TYPE = Registry.register(Registry.CHUNK_GENERATOR_TYPE, new Identifier("islandtype", "island"), new WorldGeneratorType(false, OverworldChunkGeneratorConfig::new));
+		if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
+			worldType = new IslandWorldType();
+		}
+		Registry.register(Registry.BIOME_SOURCE, new Identifier("survivalisland", "island"), IslandBiomeSource.CODEC);
 	}
 }

@@ -7,8 +7,6 @@ import net.minecraft.world.biome.layer.*;
 import net.minecraft.world.biome.layer.type.ParentedLayer;
 import net.minecraft.world.biome.layer.util.*;
 import net.minecraft.world.biome.source.BiomeLayerSampler;
-import net.minecraft.world.gen.chunk.OverworldChunkGeneratorConfig;
-import net.minecraft.world.level.LevelGeneratorType;
 
 import java.util.function.LongFunction;
 
@@ -23,23 +21,25 @@ public class IslandBiomeLayers {
         return layerFactory;
     }
 
-    public static <T extends LayerSampler, C extends LayerSampleContext<T>> LayerFactory<T> build(LevelGeneratorType generatorType, OverworldChunkGeneratorConfig settings, LongFunction<C> contextProvider) {
+    public static <T extends LayerSampler, C extends LayerSampleContext<T>> LayerFactory<T> build(LongFunction<C> contextProvider) {
         LayerFactory<T> layerFactory = LandDistributionLayer.INSTANCE.create(contextProvider.apply(1L));
 
-        if (SurvivalIsland.CONFIG.seperateBiomes)
+        if (SurvivalIsland.CONFIG.seperateBiomes) {
             layerFactory = SeperateIslandsLayer.INSTANCE.create(contextProvider.apply(3L), layerFactory);
+        }
 
         layerFactory = stack(2001L, ScaleLayer.NORMAL, layerFactory, SurvivalIsland.CONFIG.islandSize, contextProvider);
 
-        if (SurvivalIsland.CONFIG.generateBeaches)
+        if (SurvivalIsland.CONFIG.generateBeaches) {
             layerFactory = AddEdgeBiomesLayer.INSTANCE.create(contextProvider.apply(4L), layerFactory);
+        }
 
 
         return layerFactory;
     }
 
-    public static BiomeLayerSampler build(long seed, LevelGeneratorType generatorType, OverworldChunkGeneratorConfig settings) {
-        LayerFactory<CachingLayerSampler> layerFactory = build(generatorType, settings, (salt) -> new CachingLayerContext(25, seed, salt));
+    public static BiomeLayerSampler build(long seed) {
+        LayerFactory<CachingLayerSampler> layerFactory = build(salt -> new CachingLayerContext(25, seed, salt));
         return new BiomeLayerSampler(layerFactory);
     }
 }

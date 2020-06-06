@@ -3,13 +3,7 @@
   "package": "supercoder79.survivalisland.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "MixinOverworldDimension"
-  ],
-  "client": [
-    "MixinLevelGeneratorTypeClient"
-  ],
-  "server": [
-    "MixinLevelGeneratorTypeServer"
+
   ],
   "injectors": {
     "defaultRequire": 1
