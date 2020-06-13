@@ -1,15 +1,14 @@
 package supercoder79.survivalisland.world;
 
-import net.minecraft.class_5317;
-import net.minecraft.world.biome.source.VanillaLayeredBiomeSource;
+import net.minecraft.client.world.GeneratorType;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 import net.minecraft.world.gen.chunk.ChunkGeneratorType;
 import net.minecraft.world.gen.chunk.SurfaceChunkGenerator;
 
-public class IslandWorldType extends class_5317 {
+public class IslandWorldType extends GeneratorType {
     public IslandWorldType() {
         super("island");
-        class_5317.field_25052.add(this);
+        GeneratorType.VALUES.add(this);
     }
 
     @Override
