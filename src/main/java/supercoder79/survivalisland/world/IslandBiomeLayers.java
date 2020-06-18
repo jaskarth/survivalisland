@@ -28,12 +28,17 @@ public class IslandBiomeLayers {
             layerFactory = SeperateIslandsLayer.INSTANCE.create(contextProvider.apply(3L), layerFactory);
         }
 
+        layerFactory = AddDeepOceanLayer.INSTANCE.create(contextProvider.apply(50L), layerFactory);
+
         layerFactory = stack(2001L, ScaleLayer.NORMAL, layerFactory, SurvivalIsland.CONFIG.islandSize, contextProvider);
 
         if (SurvivalIsland.CONFIG.generateBeaches) {
             layerFactory = AddEdgeBiomesLayer.INSTANCE.create(contextProvider.apply(4L), layerFactory);
         }
 
+        LayerFactory<T> tempLayer = OceanTemperatureLayer.INSTANCE.create(contextProvider.apply(5L));
+        tempLayer = stack(2001L, ScaleLayer.NORMAL, tempLayer, 6, contextProvider);
+        layerFactory = ApplyOceanTemperatureLayer.INSTANCE.create(contextProvider.apply(48L), layerFactory, tempLayer);
 
         return layerFactory;
     }
