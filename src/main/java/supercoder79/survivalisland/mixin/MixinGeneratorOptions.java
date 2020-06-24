@@ -11,6 +11,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import supercoder79.survivalisland.SurvivalIsland;
+import supercoder79.survivalisland.config.ConfigSerializer;
 import supercoder79.survivalisland.world.IslandBiomeSource;
 
 import java.util.Properties;
@@ -19,8 +21,9 @@ import java.util.Random;
 @Mixin(GeneratorOptions.class)
 public class MixinGeneratorOptions {
     @Inject(method = "fromProperties", at = @At("HEAD"), cancellable = true)
-    private static void injectSimplex(Properties properties, CallbackInfoReturnable<GeneratorOptions> cir) {
+    private static void injectIsland(Properties properties, CallbackInfoReturnable<GeneratorOptions> cir) {
         if (properties.get("level-type").toString().trim().toLowerCase().equals("island")) {
+            SurvivalIsland.CONFIG = ConfigSerializer.init();
             String seed = (String) MoreObjects.firstNonNull(properties.get("level-seed"), "");
             long l = new Random().nextLong();
             if (!seed.isEmpty()) {
