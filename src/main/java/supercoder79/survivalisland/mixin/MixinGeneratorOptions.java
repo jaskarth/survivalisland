@@ -20,7 +20,7 @@ import java.util.Random;
 public class MixinGeneratorOptions {
     @Inject(method = "fromProperties", at = @At("HEAD"), cancellable = true)
     private static void injectSimplex(Properties properties, CallbackInfoReturnable<GeneratorOptions> cir) {
-        if (properties.get("level-type") == "island") {
+        if (properties.get("level-type").toString().trim().toLowerCase().equals("island")) {
             String seed = (String) MoreObjects.firstNonNull(properties.get("level-seed"), "");
             long l = new Random().nextLong();
             if (!seed.isEmpty()) {
