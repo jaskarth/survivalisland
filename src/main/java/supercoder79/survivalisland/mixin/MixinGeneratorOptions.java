@@ -22,6 +22,11 @@ import java.util.Random;
 public class MixinGeneratorOptions {
     @Inject(method = "fromProperties", at = @At("HEAD"), cancellable = true)
     private static void injectIsland(Properties properties, CallbackInfoReturnable<GeneratorOptions> cir) {
+        if (properties.get("level-type") == null) {
+            return;
+        }
+
+
         if (properties.get("level-type").toString().trim().toLowerCase().equals("island")) {
             SurvivalIsland.CONFIG = ConfigSerializer.init();
             String seed = (String) MoreObjects.firstNonNull(properties.get("level-seed"), "");
