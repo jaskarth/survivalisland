@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ConfigSerializer {
-    private static Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static ConfigData init() {
         ConfigData configData = null;
@@ -20,12 +20,12 @@ public class ConfigSerializer {
 
             Path configDir = Paths.get("", "config", "survivalisland.json");
             if (Files.exists(configDir)) {
-                configData = gson.fromJson(new FileReader(configDir.toFile()), ConfigData.class);
+                configData = GSON.fromJson(new FileReader(configDir.toFile()), ConfigData.class);
             } else {
                 configData = new ConfigData();
                 Paths.get("", "config").toFile().mkdirs();
                 BufferedWriter writer = new BufferedWriter(new FileWriter(configDir.toFile()));
-                writer.write(gson.toJson(configData));
+                writer.write(GSON.toJson(configData));
 
                 writer.close();
             }

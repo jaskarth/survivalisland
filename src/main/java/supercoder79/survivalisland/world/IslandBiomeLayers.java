@@ -1,5 +1,7 @@
 package supercoder79.survivalisland.world;
 
+import net.minecraft.util.registry.Registry;
+import net.minecraft.world.biome.Biome;
 import supercoder79.survivalisland.SurvivalIsland;
 import supercoder79.survivalisland.layer.LandDistributionLayer;
 import supercoder79.survivalisland.layer.SeperateIslandsLayer;
@@ -21,8 +23,8 @@ public class IslandBiomeLayers {
         return layerFactory;
     }
 
-    public static <T extends LayerSampler, C extends LayerSampleContext<T>> LayerFactory<T> build(LongFunction<C> contextProvider) {
-        LayerFactory<T> layerFactory = LandDistributionLayer.INSTANCE.create(contextProvider.apply(1L));
+    public static <T extends LayerSampler, C extends LayerSampleContext<T>> LayerFactory<T> build(LongFunction<C> contextProvider, Registry<Biome> biomeRegistry) {
+        LayerFactory<T> layerFactory = new LandDistributionLayer(biomeRegistry).create(contextProvider.apply(1L));
 
         if (SurvivalIsland.CONFIG.seperateBiomes) {
             layerFactory = SeperateIslandsLayer.INSTANCE.create(contextProvider.apply(3L), layerFactory);
@@ -43,8 +45,8 @@ public class IslandBiomeLayers {
         return layerFactory;
     }
 
-    public static BiomeLayerSampler build(long seed) {
-        LayerFactory<CachingLayerSampler> layerFactory = build(salt -> new CachingLayerContext(25, seed, salt));
+    public static BiomeLayerSampler build(long seed, Registry<Biome> biomeRegistry) {
+        LayerFactory<CachingLayerSampler> layerFactory = build(salt -> new CachingLayerContext(25, seed, salt), biomeRegistry);
         return new BiomeLayerSampler(layerFactory);
     }
 }
