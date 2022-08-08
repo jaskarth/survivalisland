@@ -8,6 +8,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.DensityFunctions;
 import org.slf4j.Logger;
+import supercoder79.survivalisland.SurvivalIsland;
 import supercoder79.survivalisland.noise.OctaveNoise;
 import supercoder79.survivalisland.world.util.SeedStealer;
 
@@ -28,11 +29,13 @@ public class IslandContinentalnessFunction implements DensityFunction {
     private void initSeed(long seed) {
         this.seed = seed;
         Random random = new Random(seed);
-        circleNoise = new OctaveNoise(2, random, 50, 50, 0.65, 1.9, 1.2);
-        radiusNoise = new OctaveNoise(2, random, 24, 24, 14, 1.9, 1.9);
-        sXNoise = new OctaveNoise(1, random, 24, 24, 14, 1.9, 1.9);
-        sZNoise = new OctaveNoise(1, random, 24, 24, 14, 1.9, 1.9);
+        circleNoise = SurvivalIsland.CONFIG.islandCutoffNoise.makeLive(random);
+        radiusNoise = SurvivalIsland.CONFIG.radiusModifyNoise.makeLive(random);
+        sXNoise = SurvivalIsland.CONFIG.centerXShiftNoise.makeLive(random);
+        sZNoise = SurvivalIsland.CONFIG.centerZShiftNoise.makeLive(random);
     }
+
+    private static final double ISLAND_SIZE = SurvivalIsland.CONFIG.islandSize;
 
     @Override
     public double compute(FunctionContext ctx) {
@@ -44,8 +47,8 @@ public class IslandContinentalnessFunction implements DensityFunction {
         double ra = radiusNoise.sample(x, z);
         double cx = center.x + sXNoise.sample(x, z);
         double cz = center.z + sZNoise.sample(x, z);
-        double dx = (x - cx) / (32.0 + ra);
-        double dz = (z - cz) / (32.0 + ra);
+        double dx = (x - cx) / (ISLAND_SIZE + ra);
+        double dz = (z - cz) / (ISLAND_SIZE + ra);
         double dist = dx * dx + dz * dz;
         double dstAdd = circleNoise.sample(x, z);
         if (dist < 1 + dstAdd) {
@@ -67,9 +70,14 @@ public class IslandContinentalnessFunction implements DensityFunction {
         return func;
     }
 
-    private static final int GRID_SIZE = 240;
+    private static final int GRID_SIZE = SurvivalIsland.CONFIG.islandSeperation;
+    private static final int INNER_GRID_SIZE = SurvivalIsland.CONFIG.islandSpacing;
 
     private static Vec2i findClosestCentroid(long seed, int x, int z) {
+        if (SurvivalIsland.CONFIG.hardcoreMode) {
+            return new Vec2i(0, 0);
+        }
+
         int cx = x / GRID_SIZE;
         int cz = z / GRID_SIZE;
 
@@ -83,8 +91,8 @@ public class IslandContinentalnessFunction implements DensityFunction {
                 setDecorationSeed(random, seed, dx, dz);
 //                random.setSeed(ChunkPos.asLong(dx, dz));
 
-                int rx = random.nextInt(120) + (dx * GRID_SIZE);
-                int rz = random.nextInt(120) + (dz * GRID_SIZE);
+                int rx = random.nextInt(INNER_GRID_SIZE) + (dx * GRID_SIZE);
+                int rz = random.nextInt(INNER_GRID_SIZE) + (dz * GRID_SIZE);
 
                 int dist = ((x - rx) * (x - rx)) + ((z - rz) * (z - rz));
                 if (minDist > dist) {
