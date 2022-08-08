@@ -3,6 +3,8 @@
   "package": "supercoder79.survivalisland.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "MixinNoiseWiringHelper",
+    "NoiseRouterDataAccessor"
   ],
   "client": [
   ],
