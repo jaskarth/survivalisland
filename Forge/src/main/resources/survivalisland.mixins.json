@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "supercoder79.survivalisland.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "survivalisland.refmap.json",
+  "mixins": [
+    "MixinNoiseWiringHelper",
+    "NoiseRouterDataAccessor"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
