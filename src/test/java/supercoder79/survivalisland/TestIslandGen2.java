@@ -77,11 +77,11 @@ public class TestIslandGen2 {
     private static final double PRE_CURVED_VALUE_CREATING_A_ZERO_OUTPUT = Math.sqrt(1 - Math.pow(UNIT_INTERVAL_VALUE_CREATING_A_ZERO_OUTPUT, 1.0 / 3.0)); // inverse of falloff=(1-dist²)³
     private static final double RADIUS_MULTIPLIER_TO_ACCOUNT_FOR_UNDERWATER_FALLOFF = 1.0 / PRE_CURVED_VALUE_CREATING_A_ZERO_OUTPUT;
 
-    private static final double ISLAND_SIZE_ABSOLUTE = 32.0;//SurvivalIsland.CONFIG.islandSize;
+    private static final double ISLAND_SIZE_ABSOLUTE = 128.0;//SurvivalIsland.CONFIG.islandSize;
     private static final double ISLAND_SIZE_ABSOLUTE_PADDED = ISLAND_SIZE_ABSOLUTE
             * RADIUS_MULTIPLIER_TO_ACCOUNT_FOR_UNDERWATER_FALLOFF;
 
-    private static final int ISLAND_SEPARATION_ABSOLUTE = 280;//SurvivalIsland.CONFIG.islandSeperation;
+    private static final int ISLAND_SEPARATION_ABSOLUTE = 800;//SurvivalIsland.CONFIG.islandSeperation;
     private static final double SQUARE_DIAGONAL = Math.sqrt(2);
     private static final double GRID_CELL_SIZE = ISLAND_SEPARATION_ABSOLUTE * SQUARE_DIAGONAL; // This seemed to make it look good
     private static final double GRID_FREQUENCY = 1.0 / GRID_CELL_SIZE;
@@ -114,8 +114,8 @@ public class TestIslandGen2 {
         double z = zWorld;
 
         // TODO replace with vector-output noise
-        x += sXNoise.sample(x, z);
-        z += sZNoise.sample(x, z);
+        x += sXNoise.sample(xWorld, zWorld);
+        z += sZNoise.sample(xWorld, zWorld);
 
         x *= GRID_FREQUENCY;
         z *= GRID_FREQUENCY;

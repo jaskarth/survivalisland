@@ -16,7 +16,7 @@ plugins {
 apply plugin: 'org.spongepowered.mixin'
 
 group = 'supercoder79'
-version = '0.2.0'
+version = '0.2.1'
 
 java {
     archivesBaseName = 'survivalisland'

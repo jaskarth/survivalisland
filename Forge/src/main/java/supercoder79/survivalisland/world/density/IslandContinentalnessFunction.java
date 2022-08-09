@@ -37,7 +37,7 @@ public class IslandContinentalnessFunction implements DensityFunction {
     private static final long PRIME_I = 0x598CD327003817B5L;
     private static final long HASH_MULTIPLIER = 0x53A3F72DEEC546F5L;
 
-    private static final double TARGET_MAX_VALUE = 0.1;
+    private static final double TARGET_MAX_VALUE = 0.6;
     private static final double TARGET_MIN_VALUE = -0.4;
 
     private static final double UNIT_INTERVAL_MULTIPLIER = TARGET_MAX_VALUE - TARGET_MIN_VALUE;
@@ -84,8 +84,8 @@ public class IslandContinentalnessFunction implements DensityFunction {
         double z = zWorld;
 
         // TODO replace with vector-output noise
-        x += sXNoise.sample(x, z);
-        z += sZNoise.sample(x, z);
+        x += sXNoise.sample(xWorld, zWorld);
+        z += sZNoise.sample(xWorld, zWorld);
 
         x *= GRID_FREQUENCY;
         z *= GRID_FREQUENCY;
@@ -162,7 +162,7 @@ public class IslandContinentalnessFunction implements DensityFunction {
 
                     if (!conflictFound) {
                         float distSqScaled = distSqToIslandCenter * (float)(1.0 / (ISLAND_SIZE_RELATIVE_PADDED * ISLAND_SIZE_RELATIVE_PADDED));
-                        float falloff = Mth.cube(1 - Mth.square(distSqScaled)); // (1-x²)³ metaball curve
+                        float falloff = Mth.cube(1 - distSqScaled); // (1-x²)³ metaball curve
                         value += falloff;
                     }
 
