@@ -1,43 +1,74 @@
-package supercoder79.survivalisland.world.density;
+package supercoder79.survivalisland;
 
-import com.mojang.logging.LogUtils;
-import com.mojang.serialization.Codec;
-import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.DensityFunction;
-import org.slf4j.Logger;
-import supercoder79.survivalisland.SurvivalIsland;
 import supercoder79.survivalisland.noise.OctaveNoise;
-import supercoder79.survivalisland.world.util.SeedStealer;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Random;
 
-public class IslandContinentalnessFunction implements DensityFunction {
-    public static final Codec<IslandContinentalnessFunction> UCODEC = Codec.unit(IslandContinentalnessFunction::new);
-    public static final KeyDispatchDataCodec<IslandContinentalnessFunction> CODEC = KeyDispatchDataCodec.of(UCODEC);
-    private static final Logger LOGGER = LogUtils.getLogger();
-    private long seed;
+public class TestIslandGen2 {
+    public static void main(String[] args) {
+        int size = 2048;
+        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
 
-    //OctaveNoise circleNoise = null;
-    //OctaveNoise radiusNoise = null;
-    OctaveNoise sXNoise = null;
-    OctaveNoise sZNoise = null;
+        for (int x = 0; x < size; x++) {
+            if (x % Math.max(size / 16, 1) == 0) {
+                System.out.println((x / (double)size) * 100 + "%");
+            }
 
-    private void initSeed(long seed) {
-        this.seed = seed;
-        Random random = new Random(seed);
-        //circleNoise = SurvivalIsland.CONFIG.islandCutoffNoise.makeLive(random);
-        //radiusNoise = SurvivalIsland.CONFIG.radiusModifyNoise.makeLive(random);
-        sXNoise = SurvivalIsland.CONFIG.domainWarpNoise.makeLive(random);
-        sZNoise = SurvivalIsland.CONFIG.domainWarpNoise.makeLive(random);
+            for (int z = 0; z < size; z++) {
+                double value = compute(new DensityFunction.SinglePointContext(x - size/2, 0, z - size/2));
+                int color;
+                if (value < 0) {
+                    value /= -0.4;
+                    color = getIntFromColor((int)Mth.lerp(value, 255, 10), (int)Mth.lerp(value, 255, 90), (int)Mth.lerp(value, 255, 180));
+                }
+                else {
+                    color = getIntFromColor((int)Mth.lerp(value, 0, 127), (int)Mth.lerp(value, 127, 255), (int)Mth.lerp(value, 0, 127));
+                }
+
+                img.setRGB(x, z, color);
+            }
+        }
+
+        Path p = Paths.get("build", "island.png");
+        try {
+            ImageIO.write(img, "png", p.toAbsolutePath().toFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
+    public static int getIntFromColor(int red, int green, int blue) {
+        red = Mth.clamp(red, 0, 255);
+        green = Mth.clamp(green, 0, 255);
+        blue = Mth.clamp(blue, 0, 255);
+
+        red = (red << 16) & 0x00FF0000; //Shift red 16-bits and mask out other stuff
+        green = (green << 8) & 0x0000FF00; //Shift green 8-bits and mask out other stuff
+        blue = blue & 0x000000FF; //Mask out anything not blue.
+
+        return 0xFF000000 | red | green | blue; //0xFF000000 for 100% Alpha. Bitwise OR everything together.
+    }
+
+    private static OctaveNoise circleNoise = new OctaveNoise(2, new Random(10), 50, 50, 0.65, 1.9, 1.2);
+    private static OctaveNoise radiusNoise = new OctaveNoise(2, new Random(11), 24, 24, 14, 1.9, 1.9);
+    private static OctaveNoise sXNoise = new OctaveNoise(1, new Random(101), 24, 24, 14, 1.9, 1.9);
+    private static OctaveNoise sZNoise = new OctaveNoise(1, new Random(102), 24, 24, 14, 1.9, 1.9);
+
+    private static final long seed = 7;
 
     private static final long PRIME_X = 0x5205402B9270C86FL;
     private static final long PRIME_Z = 0x5BCC226E9FA0BACBL;
     private static final long PRIME_I = 0x598CD327003817B5L;
     private static final long HASH_MULTIPLIER = 0x53A3F72DEEC546F5L;
 
-    private static final double TARGET_MAX_VALUE = 0.1;
+    private static final double TARGET_MAX_VALUE = 1.0;
     private static final double TARGET_MIN_VALUE = -0.4;
 
     private static final double UNIT_INTERVAL_MULTIPLIER = TARGET_MAX_VALUE - TARGET_MIN_VALUE;
@@ -46,11 +77,11 @@ public class IslandContinentalnessFunction implements DensityFunction {
     private static final double PRE_CURVED_VALUE_CREATING_A_ZERO_OUTPUT = Math.sqrt(1 - Math.pow(UNIT_INTERVAL_VALUE_CREATING_A_ZERO_OUTPUT, 1.0 / 3.0)); // inverse of falloff=(1-dist²)³
     private static final double RADIUS_MULTIPLIER_TO_ACCOUNT_FOR_UNDERWATER_FALLOFF = 1.0 / PRE_CURVED_VALUE_CREATING_A_ZERO_OUTPUT;
 
-    private static final double ISLAND_SIZE_ABSOLUTE = SurvivalIsland.CONFIG.islandSize;
+    private static final double ISLAND_SIZE_ABSOLUTE = 32.0;//SurvivalIsland.CONFIG.islandSize;
     private static final double ISLAND_SIZE_ABSOLUTE_PADDED = ISLAND_SIZE_ABSOLUTE
             * RADIUS_MULTIPLIER_TO_ACCOUNT_FOR_UNDERWATER_FALLOFF;
 
-    private static final int ISLAND_SEPARATION_ABSOLUTE = SurvivalIsland.CONFIG.islandSeperation;
+    private static final int ISLAND_SEPARATION_ABSOLUTE = 280;//SurvivalIsland.CONFIG.islandSeperation;
     private static final double SQUARE_DIAGONAL = Math.sqrt(2);
     private static final double GRID_CELL_SIZE = ISLAND_SEPARATION_ABSOLUTE * SQUARE_DIAGONAL; // This seemed to make it look good
     private static final double GRID_FREQUENCY = 1.0 / GRID_CELL_SIZE;
@@ -64,20 +95,19 @@ public class IslandContinentalnessFunction implements DensityFunction {
 
     private static final int ISLAND_SIZE_SEARCH_BOUND = Mth.ceil(ISLAND_SIZE_RELATIVE_PADDED);
 
-    // Number of islands to try placing = asymptotic # possible per area in densest packing
+    // Number of islands to try placing = asymptotic # possible per area in densest packing (not considering square)
     // It's not critical for this to be exactly this value, but this was simple enough.
-    // For ISLAND_SEPARATION_ABSOLUTE * SQUARE_DIAGONAL the ceiling result is 2.
+    // For ISLAND_SEPARATION_ABSOLUTE * SQUARE_DIAGONAL the result is 2.
     private static final double PACKING_RATIO = 2 / Math.sqrt(3);
     private static final int N_ISLANDS_TO_TRY_PER_CELL = Mth.ceil(Mth.square(PACKING_RATIO * GRID_CELL_SIZE / ISLAND_SEPARATION_ABSOLUTE));
 
     private record ProspectiveIslandEntry(
-        float jitterX, float jitterZ, int rank
+            float jitterX, float jitterZ, int rank
     ) { }
-    private final ThreadLocal<ProspectiveIslandEntry[]> prospectiveIslandEntriesThreadLocal
+    private static final ThreadLocal<ProspectiveIslandEntry[]> prospectiveIslandEntriesThreadLocal
             = ThreadLocal.withInitial(() -> new ProspectiveIslandEntry[TOTAL_SEARCH_GRID_SIZE * N_ISLANDS_TO_TRY_PER_CELL]);
 
-    @Override
-    public double compute(FunctionContext ctx) {
+    public static double compute(DensityFunction.FunctionContext ctx) {
         double xWorld = ctx.blockX();
         double zWorld = ctx.blockZ();
         double x = xWorld;
@@ -105,7 +135,7 @@ public class IslandContinentalnessFunction implements DensityFunction {
                 for (int i = 0; i < N_ISLANDS_TO_TRY_PER_CELL; i++) {
                     long hash = hash(xCellBase, zCellBase, i);
                     prospectiveIslandEntries[cellIndex * N_ISLANDS_TO_TRY_PER_CELL + i] = new ProspectiveIslandEntry(
-                            ((hash >> 0) & 0xFFFF) * (1.0f / 0x10000),
+                            ((hash      ) & 0xFFFF) * (1.0f / 0x10000),
                             ((hash >> 16) & 0xFFFF) * (1.0f / 0x10000),
                             (int) (hash >> 32)
                     );
@@ -162,7 +192,7 @@ public class IslandContinentalnessFunction implements DensityFunction {
 
                     if (!conflictFound) {
                         float distSqScaled = distSqToIslandCenter * (float)(1.0 / (ISLAND_SIZE_RELATIVE_PADDED * ISLAND_SIZE_RELATIVE_PADDED));
-                        float falloff = Mth.cube(1 - Mth.square(distSqScaled)); // (1-x²)³ metaball curve
+                        float falloff = Mth.cube(1 - distSqScaled); // (1-dist²)³ metaball curve
                         value += falloff;
                     }
 
@@ -182,48 +212,10 @@ public class IslandContinentalnessFunction implements DensityFunction {
         return value;
     }
 
-    private long hash(int cellX, int cellZ, int i) {
+    private static long hash(int cellX, int cellZ, int i) {
         long hash = seed ^ (cellX * PRIME_X) ^ (cellZ * PRIME_Z) ^ (i * PRIME_I);
         hash *= HASH_MULTIPLIER;
         hash ^= hash >> 32;
         return hash;
-    }
-
-    @Override
-    public void fillArray(double[] ds, ContextProvider contextProvider) {
-        contextProvider.fillAllDirectly(ds, this);
-    }
-
-    private static IslandContinentalnessFunction fork(long seed) {
-        IslandContinentalnessFunction func = new IslandContinentalnessFunction();
-        func.initSeed(seed);
-
-        return func;
-    }
-
-    @Override
-    public DensityFunction mapAll(Visitor visitor) {
-        if (visitor instanceof SeedStealer seed) {
-            return fork(seed.steal());
-        }
-
-//        LOGGER.error("Couldn't steal seed, something seedy is happening!");
-
-        return this;
-    }
-
-    @Override
-    public double minValue() {
-        return TARGET_MIN_VALUE;
-    }
-
-    @Override
-    public double maxValue() {
-        return TARGET_MAX_VALUE;
-    }
-
-    @Override
-    public KeyDispatchDataCodec<? extends DensityFunction> codec() {
-        return CODEC;
     }
 }
