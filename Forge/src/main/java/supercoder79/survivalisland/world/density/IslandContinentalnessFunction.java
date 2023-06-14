@@ -162,7 +162,7 @@ public class IslandContinentalnessFunction implements DensityFunction {
 
                     if (!conflictFound) {
                         float distSqScaled = distSqToIslandCenter * (float)(1.0 / (ISLAND_SIZE_RELATIVE_PADDED * ISLAND_SIZE_RELATIVE_PADDED));
-                        float falloff = Mth.cube(1 - distSqScaled); // (1-x²)³ metaball curve
+                        float falloff = cube(1 - distSqScaled); // (1-x²)³ metaball curve
                         value += falloff;
                     }
 
@@ -187,6 +187,10 @@ public class IslandContinentalnessFunction implements DensityFunction {
         hash *= HASH_MULTIPLIER;
         hash ^= hash >> 32;
         return hash;
+    }
+
+    private static float cube(float i) {
+        return (i * i) * i; // nano-opt
     }
 
     @Override
