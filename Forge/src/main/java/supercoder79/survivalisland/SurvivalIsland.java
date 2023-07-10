@@ -38,7 +38,6 @@ public class SurvivalIsland {
         IslandDensityFunctions.REGISTER2.register(modEventBus);
         IslandDensityFunctions.init();
 
-
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
     }
