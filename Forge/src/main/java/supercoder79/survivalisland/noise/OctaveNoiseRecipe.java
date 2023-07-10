@@ -1,25 +1,28 @@
 package supercoder79.survivalisland.noise;
 
-import java.util.Random;
+import com.google.gson.annotations.SerializedName;
+import net.minecraft.util.RandomSource;
 
 public final class OctaveNoiseRecipe {
+    private static final double CONFIG_FREQUENCY_COMPATIBILITY_RESCALE = 0.5;
+
     private int octaves;
-    private double horizontalFrequency;
-    private double verticalFrequency;
+    @SerializedName("horizontalFrequency") private double horizontalSpacing;
+    @SerializedName("verticalFrequency") private double verticalSpacing;
     private double amplitude;
     private double lacunarity;
-    private double persistence;
+    @SerializedName("persistence") private double persistenceDivisor;
 
-    public OctaveNoiseRecipe(int octaves, double horizontalFrequency, double verticalFrequency, double amplitude, double lacunarity, double persistence) {
+    public OctaveNoiseRecipe(int octaves, double horizontalSpacing, double verticalSpacing, double amplitude, double lacunarity, double persistenceDivisor) {
         this.octaves = octaves;
-        this.horizontalFrequency = horizontalFrequency;
-        this.verticalFrequency = verticalFrequency;
+        this.horizontalSpacing = horizontalSpacing;
+        this.verticalSpacing = verticalSpacing;
         this.amplitude = amplitude;
         this.lacunarity = lacunarity;
-        this.persistence = persistence;
+        this.persistenceDivisor = persistenceDivisor;
     }
 
-    public OctaveNoise makeLive(Random random) {
-        return new OctaveNoise(octaves, random, horizontalFrequency, verticalFrequency, amplitude, lacunarity, persistence);
+    public OctaveNoise makeLive(RandomSource random) {
+        return new OctaveNoise(octaves, random, CONFIG_FREQUENCY_COMPATIBILITY_RESCALE / horizontalSpacing, CONFIG_FREQUENCY_COMPATIBILITY_RESCALE / verticalSpacing, amplitude, lacunarity, (float)(1.0 / persistenceDivisor));
     }
 }

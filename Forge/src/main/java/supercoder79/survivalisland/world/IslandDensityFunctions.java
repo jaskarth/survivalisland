@@ -8,16 +8,14 @@ import net.minecraft.world.level.levelgen.*;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegisterEvent;
-import supercoder79.survivalisland.world.density.IslandContinentalnessFunction;
+import supercoder79.survivalisland.world.density.IslandContinentalNoiseFunction;
 
 import java.util.function.Supplier;
 
 public final class IslandDensityFunctions {
-//    public static final DeferredRegister<DensityFunction> REGISTER = DeferredRegister.create(Registry.DENSITY_FUNCTION_REGISTRY, "survivalisland");
     public static final DeferredRegister<Codec<? extends DensityFunction>> REGISTER2 = DeferredRegister.create(Registries.DENSITY_FUNCTION_TYPE, "survivalisland");
 
     public static void init() {
-        // build types
-        REGISTER2.register("islandcont", () -> IslandContinentalnessFunction.UCODEC);
+        REGISTER2.register("islandcont", () -> IslandContinentalNoiseFunction.UCODEC);
     }
 }
