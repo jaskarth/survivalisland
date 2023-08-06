@@ -1,6 +1,11 @@
 package supercoder79.survivalisland.noise;
 
 import net.minecraft.util.Mth;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import supercoder79.survivalisland.util.CachedQueryableGrid2D;
+import supercoder79.survivalisland.util.RoundedQueryShape;
+
+import java.util.Objects;
 
 public class IslandContinentalNoise {
 
@@ -9,9 +14,11 @@ public class IslandContinentalNoise {
     private static final long PRIME_I = 0x598CD327003817B5L;
     private static final long HASH_MULTIPLIER = 0x53A3F72DEEC546F5L;
 
+    private static final int CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT = 2;
+
     // These values seemed to make things look good.
     private static final double GRID_CELL_SIZE_SPACING_MULTIPLIER = Math.sqrt(2);
-    private final int ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL = 3;
+    private static final int ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL = 3;
 
     private final long seed;
 
@@ -21,13 +28,11 @@ public class IslandContinentalNoise {
     private final float islandCurveValueAtCoastUntunedUnmapped;
 
     private final double gridFrequency;
-    private final float islandRadiusGridScalePadded;
-    private final float islandSeparationDistanceGridScale;
+    private final float islandSeparationDistanceAtGridScale;
+    private final float islandFalloffRadiusAtGridScale;
 
-    private final int totalSearchRadiusBound;
-    private final int totalSearchDiameterBound;
-    private final int totalSearchGridSize;
-    private final int islandRadiusSearchBound;
+    private final CachedQueryableGrid2D<ProspectiveIslandEntry> prospectiveIslandGrid;
+    private final CachedQueryableGrid2D<ConfirmedIslandEntry> confirmedIslandGrid;
 
     private final OctaveNoise domainWarpNoise;
     private final OctaveNoise rangeVariationNoise;
@@ -35,15 +40,17 @@ public class IslandContinentalNoise {
     private record ProspectiveIslandEntry(
             float jitterX, float jitterZ, int rank
     ) { }
-    private final ThreadLocal<ProspectiveIslandEntry[]> prospectiveIslandEntriesThreadLocal;
+    private record ConfirmedIslandEntry(
+            float jitterX, float jitterZ
+    ) { }
 
     public IslandContinentalNoise(long seed,
                                   double islandRadius, double islandSeparationDistance,
                                   float targetMinValueA, float targetMaxValueA,
                                   float targetMinValueB, float targetMaxValueB,
                                   double underwaterFalloffDistanceRatioToRadius,
-                                  OctaveNoise domainWarpNoise,
-                                  OctaveNoise rangeVariationNoise
+                                  @NonNull OctaveNoise domainWarpNoise,
+                                  @NonNull OctaveNoise rangeVariationNoise
     ) {
         this.seed = seed;
 
@@ -67,23 +74,35 @@ public class IslandContinentalNoise {
 
         double gridCellSize = islandSeparationDistance * GRID_CELL_SIZE_SPACING_MULTIPLIER;
         gridFrequency = 1.0 / gridCellSize;
-        double islandRadiusGridScalePadded = totalFalloffDistance * gridFrequency;
-        this.islandRadiusGridScalePadded = (float)islandRadiusGridScalePadded;
-        double islandSeparationDistanceGridScale = islandSeparationDistance * gridFrequency;
-        this.islandSeparationDistanceGridScale = (float)islandSeparationDistanceGridScale;
 
-        double totalSearchRadius = islandRadiusGridScalePadded + islandSeparationDistanceGridScale;
-        totalSearchRadiusBound = Mth.ceil(totalSearchRadius);
-        totalSearchDiameterBound = totalSearchRadiusBound * 2 + 1;
-        totalSearchGridSize = totalSearchDiameterBound * totalSearchDiameterBound;
-        islandRadiusSearchBound = Mth.ceil(islandRadiusGridScalePadded);
+        double islandSeparationDistanceAtGridScale = islandSeparationDistance * gridFrequency;
+        this.islandSeparationDistanceAtGridScale = (float)islandSeparationDistanceAtGridScale;
+        int islandSeparationSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandSeparationDistanceAtGridScale)) +
+                CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
 
-        prospectiveIslandEntriesThreadLocal =
-                ThreadLocal.withInitial(() -> new ProspectiveIslandEntry[totalSearchGridSize * totalSearchGridSize]);
+        double islandFalloffRadiusAtGridScale = totalFalloffDistance * gridFrequency;
+        this.islandFalloffRadiusAtGridScale = (float)islandFalloffRadiusAtGridScale;
+        int islandFalloffRadiusSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandFalloffRadiusAtGridScale)) +
+                CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
+
+        prospectiveIslandGrid = new CachedQueryableGrid2D<>(
+                ProspectiveIslandEntry.class,
+                islandSeparationSearchSubgridWidthExponent,
+                ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL,
+                this::generateProspectiveIslandEntrySubgrid,
+                36, 1024, 32
+        );
+
+        confirmedIslandGrid = new CachedQueryableGrid2D<>(
+                ConfirmedIslandEntry.class,
+                islandFalloffRadiusSearchSubgridWidthExponent,
+                ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL,
+                this::generateConfirmedIslandEntrySubgrid,
+                16, 256, 32
+        );
     }
 
     public double compute(double xWorld, double zWorld) {
-
         OpenSimplex2S.Vec3 displacement = new OpenSimplex2S.Vec3();
         domainWarpNoise.sampleVector3(xWorld, 0, zWorld, displacement);
         double x = xWorld + displacement.x;
@@ -99,99 +118,107 @@ public class IslandContinentalNoise {
         float xInsideCell = (float)(x - xBase);
         float zInsideCell = (float)(z - zBase);
 
-        // Populate prospective island points.
-        ProspectiveIslandEntry[] prospectiveIslandEntries = prospectiveIslandEntriesThreadLocal.get();
-        for (int dz = -totalSearchRadiusBound; dz <= totalSearchRadiusBound; dz++) {
-            for (int dx = -totalSearchRadiusBound; dx <= totalSearchRadiusBound; dx++) {
-                int cellIndex = (dz + totalSearchRadiusBound) * totalSearchDiameterBound + (dx + totalSearchRadiusBound);
-                int xCellBase = xBase + dx;
-                int zCellBase = zBase + dz;
-                for (int i = 0; i < ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL; i++) {
-                    long hash = hash(xCellBase, zCellBase, i);
-                    prospectiveIslandEntries[cellIndex * ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL + i] = new ProspectiveIslandEntry(
-                            ((hash      ) & 0xFFFF) * (1.0f / 0x10000),
-                            ((hash >> 16) & 0xFFFF) * (1.0f / 0x10000),
-                            (int)(hash >> 32)
-                    );
-                }
-            }
-        }
-
         float targetMin = Mth.lerp(rangeVariationNoiseValue, targetMinValueA, targetMinValueB);
         float targetMax = Mth.lerp(rangeVariationNoiseValue, targetMaxValueA, targetMaxValueB);
 
-        // Given that the curve will be mapped from [0. 1] to [targetMin, targetMax], which unmapped value will occur at the coastline?
+        // Given that the curve will be mapped from [0, 1] to [targetMin, targetMax], which unmapped value will occur at the coastline?
         float tunedUnmappedCurveValueAtCoast = Mth.inverseLerp(0, targetMin, targetMax);
 
         // This tuning parameter bends the curve so that the coastline always maps to zero within that range.
         float islandCurveTuningValue = (1 - islandCurveValueAtCoastUntunedUnmapped) * tunedUnmappedCurveValueAtCoast /
                 (islandCurveValueAtCoastUntunedUnmapped - tunedUnmappedCurveValueAtCoast);
 
-        // Add prospective island point falloff curves.
         float value = 0;
-        for (int dzConsidering = -islandRadiusSearchBound; dzConsidering <= islandRadiusSearchBound; dzConsidering++) {
-            for (int dxConsidering = -islandRadiusSearchBound; dxConsidering <= islandRadiusSearchBound; dxConsidering++) {
-                int cellIndexConsidering = (dzConsidering + totalSearchRadiusBound) * totalSearchDiameterBound + (dxConsidering + totalSearchRadiusBound);
-                for (int iConsidering = 0; iConsidering < ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL; iConsidering++) {
-                    ProspectiveIslandEntry entryConsidering = prospectiveIslandEntries[cellIndexConsidering * ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL + iConsidering];
 
-                    float xConsideringRelativeToMainCell = dxConsidering + entryConsidering.jitterX;
-                    float zConsideringRelativeToMainCell = dzConsidering + entryConsidering.jitterZ;
-                    float distSqToIslandCenter = Mth.square(xConsideringRelativeToMainCell - xInsideCell) + Mth.square(zConsideringRelativeToMainCell - zInsideCell);
-                    if (distSqToIslandCenter >= islandRadiusGridScalePadded * islandRadiusGridScalePadded) continue;
+        CachedQueryableGrid2D<ConfirmedIslandEntry>.QueriedView confirmedIslandEntryGridView = confirmedIslandGrid.query(
+                RoundedQueryShape.createForPoint(xBase, zBase, xInsideCell, zInsideCell, islandFalloffRadiusAtGridScale)
+        );
 
-                    int conflictSearchMinX = Math.max(-totalSearchRadiusBound, Mth.floor(xConsideringRelativeToMainCell - islandSeparationDistanceGridScale));
-                    int conflictSearchMinZ = Math.max(-totalSearchRadiusBound, Mth.floor(zConsideringRelativeToMainCell - islandSeparationDistanceGridScale));
-                    int conflictSearchMaxX = Math.min( totalSearchRadiusBound, Mth.floor(xConsideringRelativeToMainCell + islandSeparationDistanceGridScale));
-                    int conflictSearchMaxZ = Math.min( totalSearchRadiusBound, Mth.floor(zConsideringRelativeToMainCell + islandSeparationDistanceGridScale));
-                    boolean conflictFound = false;
+        for (CachedQueryableGrid2D.GridCellInfo<ConfirmedIslandEntry> gridCellInfo : confirmedIslandEntryGridView) {
+            ConfirmedIslandEntry cellEntry = gridCellInfo.entry();
+            if (cellEntry == null) continue;
 
-                    // Search a radius
-                    ConflictSearchLoop:
-                    for (int dzAgainst = conflictSearchMinZ; dzAgainst <= conflictSearchMaxZ; dzAgainst++) {
-                        for (int dxAgainst = conflictSearchMinX; dxAgainst <= conflictSearchMaxX; dxAgainst++) {
-                            float xCellBaseRelativeToPointConsidering = dxAgainst - xConsideringRelativeToMainCell;
-                            float zCellBaseRelativeToPointConsidering = dzAgainst - zConsideringRelativeToMainCell;
+            float undisplacedDeltaX = gridCellInfo.cellX() - xBase;
+            float undisplacedDeltaZ = gridCellInfo.cellZ() - zBase;
+            float displacementDeltaX = cellEntry.jitterX() - xInsideCell;
+            float displacementDeltaZ = cellEntry.jitterZ() - zInsideCell;
+            float deltaX = undisplacedDeltaX + displacementDeltaX;
+            float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
 
-                            int cellIndexAgainst = (dzAgainst + totalSearchRadiusBound) * totalSearchDiameterBound + (dxAgainst + totalSearchRadiusBound);
-                            for (int iAgainst = 0; iAgainst < ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL; iAgainst++) {
-                                ProspectiveIslandEntry entryAgainst = prospectiveIslandEntries[cellIndexAgainst * ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL + iAgainst];
+            float distSqToIslandCenter = Mth.square(deltaX) + Mth.square(deltaZ);
+            if (distSqToIslandCenter >= islandFalloffRadiusAtGridScale * islandFalloffRadiusAtGridScale) continue;
 
-                                // Only yield to higher (or on the off-chance equal) ranks.
-                                if (entryAgainst.rank < entryConsidering.rank) continue;
+            float distSqScaled = distSqToIslandCenter * (float)(1.0 / (islandFalloffRadiusAtGridScale * islandFalloffRadiusAtGridScale)); // TODO
+            float falloff = cube(1 - distSqScaled); // (1-dist²)³ metaball curve
 
-                                // Don't yield to oneself.
-                                if (dxAgainst == dxConsidering && dzAgainst == dzConsidering && iConsidering == iAgainst) continue;
+            // Drag the coast down to what will be zero after the min/max mapping.
+            falloff = islandCurveTuningValue * falloff / (islandCurveTuningValue + 1 - falloff);
 
-                                // Check the separation distance for a conflict.
-                                float separationDistSq = Mth.square(xCellBaseRelativeToPointConsidering + entryAgainst.jitterX)
-                                        + Mth.square(zCellBaseRelativeToPointConsidering + entryAgainst.jitterZ);
-                                if (separationDistSq < islandSeparationDistanceGridScale * islandSeparationDistanceGridScale) {
-                                    conflictFound = true;
-                                    break ConflictSearchLoop;
-                                }
-                            }
-                        }
-                    }
-
-                    if (!conflictFound) {
-                        float distSqScaled = distSqToIslandCenter * (float)(1.0 / (islandRadiusGridScalePadded * islandRadiusGridScalePadded));
-                        float falloff = cube(1 - distSqScaled); // (1-dist²)³ metaball curve
-
-                        // Drag the coast down to what will be zero after the min/max mapping.
-                        falloff = islandCurveTuningValue * falloff / (islandCurveTuningValue + 1 - falloff);
-
-                        value += falloff;
-                    }
-
-                }
-            }
+            value += falloff;
         }
 
         // Under certain configurations, it is possible for multiple overlapping island falloffs to push this value above 1.
         value = Math.min(1, value);
 
         return Mth.lerp(value, targetMin, targetMax);
+    }
+
+    private void generateProspectiveIslandEntrySubgrid(
+            CachedQueryableGrid2D.Vector subgridBasePosition, CachedQueryableGrid2D<ProspectiveIslandEntry>.SubgridGenerationEndpoint generationEndpoint) {
+        generationEndpoint.populateCells((cellX, cellZ, cellEntryIndex) -> {
+            long hash = hash(cellX, cellZ, cellEntryIndex);
+            return new ProspectiveIslandEntry(
+                    ((hash) & 0xFFFF) * (1.0f / 0x10000),
+                    ((hash >> 16) & 0xFFFF) * (1.0f / 0x10000),
+                    (int) (hash >> 32)
+            );
+        });
+    }
+
+    private void generateConfirmedIslandEntrySubgrid(
+            CachedQueryableGrid2D.Vector subgridBasePosition, CachedQueryableGrid2D<ConfirmedIslandEntry>.SubgridGenerationEndpoint generationEndpoint) {
+
+        CachedQueryableGrid2D<ProspectiveIslandEntry>.QueriedView prospectiveIslandEntryGridView = prospectiveIslandGrid.query(
+                RoundedQueryShape.createForSubgrid(subgridBasePosition.x(), subgridBasePosition.z(), generationEndpoint.subgridWidth(), islandSeparationDistanceAtGridScale)
+        );
+
+        generationEndpoint.populateCells((prospectiveCellX, prospectiveCellZ, prospectiveCellEntryIndex) -> {
+            ProspectiveIslandEntry prospectiveEntry = prospectiveIslandEntryGridView.get(prospectiveCellX, prospectiveCellZ, prospectiveCellEntryIndex);
+
+            CachedQueryableGrid2D<ProspectiveIslandEntry>.QueriedView comparisonIslandEntryGridView = prospectiveIslandEntryGridView.subQuery(
+                    RoundedQueryShape.createForPoint(prospectiveCellX, prospectiveCellZ, prospectiveEntry.jitterX(), prospectiveEntry.jitterZ(), islandSeparationDistanceAtGridScale)
+            );
+
+            for (CachedQueryableGrid2D.GridCellInfo<ProspectiveIslandEntry> comparisonCellInfo : comparisonIslandEntryGridView) {
+                ProspectiveIslandEntry comparisonEntry = comparisonCellInfo.entry();
+
+                // Only yield to higher (or on the off-chance equal) ranks.
+                if (comparisonEntry.rank < prospectiveEntry.rank) continue;
+
+                // Don't yield to oneself.
+                if (comparisonCellInfo.cellX() == prospectiveCellX
+                        && comparisonCellInfo.cellZ() == prospectiveCellZ
+                        && comparisonCellInfo.cellEntryIndex() == prospectiveCellEntryIndex) continue;
+
+                float undisplacedDeltaX = comparisonCellInfo.cellX() - prospectiveCellX;
+                float undisplacedDeltaZ = comparisonCellInfo.cellZ() - prospectiveCellZ;
+                float displacementDeltaX = comparisonEntry.jitterX() - prospectiveEntry.jitterX();
+                float displacementDeltaZ = comparisonEntry.jitterZ() - prospectiveEntry.jitterZ();
+                float deltaX = undisplacedDeltaX + displacementDeltaX;
+                float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
+
+                // Check the separation distance for a conflict. If there was one, don't return an entry for this cell..
+                float separationDistSq = Mth.square(deltaX) + Mth.square(deltaZ);
+                if (separationDistSq < islandSeparationDistanceAtGridScale * islandSeparationDistanceAtGridScale) {
+                    return null;
+                }
+            }
+
+            return new ConfirmedIslandEntry(
+                    prospectiveEntry.jitterX(),
+                    prospectiveEntry.jitterZ()
+            );
+        });
     }
 
     private long hash(int cellX, int cellZ, int i) {
@@ -217,4 +244,22 @@ public class IslandContinentalNoise {
         return maxValue;
     }
 
+    public boolean equals(Object object) {
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
+        if (!super.equals(object)) return false;
+        IslandContinentalNoise that = (IslandContinentalNoise) object;
+        return seed == that.seed && Float.compare(that.targetMinValueA, targetMinValueA) == 0 &&
+                Float.compare(that.targetMaxValueA, targetMaxValueA) == 0 &&
+                Float.compare(that.targetMinValueB, targetMinValueB) == 0 &&
+                Float.compare(that.targetMaxValueB, targetMaxValueB) == 0 &&
+                Float.compare(that.islandCurveValueAtCoastUntunedUnmapped, islandCurveValueAtCoastUntunedUnmapped) == 0 &&
+                Double.compare(that.gridFrequency, gridFrequency) == 0 &&
+                Float.compare(that.islandFalloffRadiusAtGridScale, islandFalloffRadiusAtGridScale) == 0 &&
+                domainWarpNoise.equals(that.domainWarpNoise) && rangeVariationNoise.equals(that.rangeVariationNoise);
+    }
+
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), seed, targetMinValueA, targetMaxValueA, targetMinValueB, targetMaxValueB, islandCurveValueAtCoastUntunedUnmapped, gridFrequency, islandFalloffRadiusAtGridScale, domainWarpNoise, rangeVariationNoise);
+    }
 }
