@@ -2,6 +2,9 @@ package supercoder79.survivalisland.noise;
 
 import net.minecraft.util.RandomSource;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 public final class OctaveNoise {
     private static final double IDEAL_SLICE_OFFSET = Math.sqrt(3) / 6.0;
 
@@ -80,5 +83,23 @@ public final class OctaveNoise {
         }
 
         destination.set(resultX, resultY, resultZ);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        OctaveNoise that = (OctaveNoise) o;
+        return Double.compare(that.horizontalFrequency, horizontalFrequency) == 0 &&
+                Double.compare(that.verticalFrequency, verticalFrequency) == 0 &&
+                Float.compare(that.amplitude, amplitude) == 0 && Double.compare(that.lacunarity, lacunarity) == 0 &&
+                Float.compare(that.persistence, persistence) == 0 && Arrays.equals(octaveSeeds, that.octaveSeeds);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(horizontalFrequency, verticalFrequency, amplitude, lacunarity, persistence);
+        result = 31 * result + Arrays.hashCode(octaveSeeds);
+        return result;
     }
 }
