@@ -1,10 +1,10 @@
 package supercoder79.survivalisland.noise;
 
 import net.minecraft.util.Mth;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import supercoder79.survivalisland.util.CachedQueryableGrid2D;
 import supercoder79.survivalisland.util.RoundedQueryShape;
 
+import javax.annotation.Nonnull;
 import java.util.Objects;
 
 public class IslandContinentalNoise {
@@ -25,17 +25,20 @@ public class IslandContinentalNoise {
     private final float targetMinValueA, targetMaxValueA;
     private final float targetMinValueB, targetMaxValueB;
     private final double minValue, maxValue;
-    private final float islandCurveValueAtCoastUntunedUnmapped;
 
     private final double gridFrequency;
+
+    private final float islandContinentalRadiusAtGridScaleSq;
     private final float islandSeparationDistanceAtGridScale;
     private final float islandFalloffRadiusAtGridScale;
 
     private final CachedQueryableGrid2D<ProspectiveIslandEntry> prospectiveIslandGrid;
     private final CachedQueryableGrid2D<ConfirmedIslandEntry> confirmedIslandGrid;
+    private final CachedQueryableGrid2D<RefinedIslandEntry> refinedIslandGrid;
 
     private final OctaveNoise domainWarpNoise;
     private final OctaveNoise rangeVariationNoise;
+    private final float rangeVariationNoiseSmoothUnitRangeBoundTSquaredMultiplier;
 
     private record ProspectiveIslandEntry(
             float jitterX, float jitterZ, int rank
@@ -43,14 +46,17 @@ public class IslandContinentalNoise {
     private record ConfirmedIslandEntry(
             float jitterX, float jitterZ
     ) { }
+    private record RefinedIslandEntry(
+            float jitterX, float jitterZ, float falloffRadiusAtGridScaleSq, float inverseFalloffRadiusAtGridScaleSq, float islandCurveValueAtCoastUntunedUnmapped
+    ) { }
 
     public IslandContinentalNoise(long seed,
                                   double islandRadius, double islandSeparationDistance,
                                   float targetMinValueA, float targetMaxValueA,
                                   float targetMinValueB, float targetMaxValueB,
                                   double underwaterFalloffDistanceRatioToRadius,
-                                  @NonNull OctaveNoise domainWarpNoise,
-                                  @NonNull OctaveNoise rangeVariationNoise
+                                  @Nonnull OctaveNoise domainWarpNoise,
+                                  @Nonnull OctaveNoise rangeVariationNoise
     ) {
         this.seed = seed;
 
@@ -64,23 +70,23 @@ public class IslandContinentalNoise {
 
         this.domainWarpNoise = domainWarpNoise;
         this.rangeVariationNoise = rangeVariationNoise;
-
-        double underwaterFalloffDistance = underwaterFalloffDistanceRatioToRadius * islandRadius;
-        double totalFalloffDistance = underwaterFalloffDistance + islandRadius;
-
-        double islandCoastCurveInput = islandRadius / totalFalloffDistance;
-        double islandCurveValueAtCoastUntunedUnmappedBase = (1 - islandCoastCurveInput * islandCoastCurveInput);
-        islandCurveValueAtCoastUntunedUnmapped = (float)cube(islandCurveValueAtCoastUntunedUnmappedBase);
+        this.rangeVariationNoiseSmoothUnitRangeBoundTSquaredMultiplier =
+                computeTSquaredMultiplierForSmoothUnitRangeBoundCurve(rangeVariationNoise.amplitude());
 
         double gridCellSize = islandSeparationDistance * GRID_CELL_SIZE_SPACING_MULTIPLIER;
         gridFrequency = 1.0 / gridCellSize;
 
-        double islandSeparationDistanceAtGridScale = islandSeparationDistance * gridFrequency;
+        double underwaterFalloffDistance = underwaterFalloffDistanceRatioToRadius * islandRadius;
+        double totalFalloffDistance = underwaterFalloffDistance + islandRadius;
+
+        islandContinentalRadiusAtGridScaleSq = (float)((islandRadius * islandRadius) / (gridCellSize * gridCellSize));
+
+        double islandSeparationDistanceAtGridScale = islandSeparationDistance / gridCellSize;
         this.islandSeparationDistanceAtGridScale = (float)islandSeparationDistanceAtGridScale;
         int islandSeparationSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandSeparationDistanceAtGridScale)) +
                 CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
 
-        double islandFalloffRadiusAtGridScale = totalFalloffDistance * gridFrequency;
+        double islandFalloffRadiusAtGridScale = totalFalloffDistance / gridCellSize;
         this.islandFalloffRadiusAtGridScale = (float)islandFalloffRadiusAtGridScale;
         int islandFalloffRadiusSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandFalloffRadiusAtGridScale)) +
                 CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
@@ -90,7 +96,7 @@ public class IslandContinentalNoise {
                 islandSeparationSearchSubgridWidthExponent,
                 ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL,
                 this::generateProspectiveIslandEntrySubgrid,
-                36, 1024, 32
+                64, 1024, 32
         );
 
         confirmedIslandGrid = new CachedQueryableGrid2D<>(
@@ -98,6 +104,14 @@ public class IslandContinentalNoise {
                 islandFalloffRadiusSearchSubgridWidthExponent,
                 ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL,
                 this::generateConfirmedIslandEntrySubgrid,
+                36, 576, 32
+        );
+
+        refinedIslandGrid = new CachedQueryableGrid2D<>(
+                RefinedIslandEntry.class,
+                islandFalloffRadiusSearchSubgridWidthExponent,
+                ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL,
+                this::generateRefinedIslandEntrySubgrid,
                 16, 256, 32
         );
     }
@@ -108,7 +122,10 @@ public class IslandContinentalNoise {
         double x = xWorld + displacement.x;
         double z = zWorld + displacement.z;
 
-        float rangeVariationNoiseValue = Mth.clamp(rangeVariationNoise.sample(x, z) * 0.5f + 0.5f, 0, 1);
+        float rangeVariationNoiseValue = rangeVariationNoise.sample(x, z);
+        rangeVariationNoiseValue = smoothUnitRangeBoundCurve(rangeVariationNoiseValue,
+                rangeVariationNoiseSmoothUnitRangeBoundTSquaredMultiplier);
+        rangeVariationNoiseValue = rangeVariationNoiseValue * 0.5f + 0.5f;
 
         x *= gridFrequency;
         z *= gridFrequency;
@@ -124,18 +141,14 @@ public class IslandContinentalNoise {
         // Given that the curve will be mapped from [0, 1] to [targetMin, targetMax], which unmapped value will occur at the coastline?
         float tunedUnmappedCurveValueAtCoast = Mth.inverseLerp(0, targetMin, targetMax);
 
-        // This tuning parameter bends the curve so that the coastline always maps to zero within that range.
-        float islandCurveTuningValue = (1 - islandCurveValueAtCoastUntunedUnmapped) * tunedUnmappedCurveValueAtCoast /
-                (islandCurveValueAtCoastUntunedUnmapped - tunedUnmappedCurveValueAtCoast);
-
         float value = 0;
 
-        CachedQueryableGrid2D<ConfirmedIslandEntry>.QueriedView confirmedIslandEntryGridView = confirmedIslandGrid.query(
+        CachedQueryableGrid2D<RefinedIslandEntry>.QueriedView refinedIslandEntryGridView = refinedIslandGrid.query(
                 RoundedQueryShape.createForPoint(xBase, zBase, xInsideCell, zInsideCell, islandFalloffRadiusAtGridScale)
         );
 
-        for (CachedQueryableGrid2D.GridCellInfo<ConfirmedIslandEntry> gridCellInfo : confirmedIslandEntryGridView) {
-            ConfirmedIslandEntry cellEntry = gridCellInfo.entry();
+        for (CachedQueryableGrid2D.GridCellInfo<RefinedIslandEntry> gridCellInfo : refinedIslandEntryGridView) {
+            RefinedIslandEntry cellEntry = gridCellInfo.entry();
             if (cellEntry == null) continue;
 
             float undisplacedDeltaX = gridCellInfo.cellX() - xBase;
@@ -146,19 +159,19 @@ public class IslandContinentalNoise {
             float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
 
             float distSqToIslandCenter = Mth.square(deltaX) + Mth.square(deltaZ);
-            if (distSqToIslandCenter >= islandFalloffRadiusAtGridScale * islandFalloffRadiusAtGridScale) continue;
+            if (distSqToIslandCenter >= cellEntry.falloffRadiusAtGridScaleSq) continue;
 
-            float distSqScaled = distSqToIslandCenter * (float)(1.0 / (islandFalloffRadiusAtGridScale * islandFalloffRadiusAtGridScale)); // TODO
+            float distSqScaled = distSqToIslandCenter * cellEntry.inverseFalloffRadiusAtGridScaleSq;
             float falloff = cube(1 - distSqScaled); // (1-dist²)³ metaball curve
 
             // Drag the coast down to what will be zero after the min/max mapping.
-            falloff = islandCurveTuningValue * falloff / (islandCurveTuningValue + 1 - falloff);
+            // https://www.desmos.com/calculator/xzvzgstyen
+            float tuningValueNumerator = (1 - cellEntry.islandCurveValueAtCoastUntunedUnmapped) * tunedUnmappedCurveValueAtCoast;
+            float tuningValueDenominator = cellEntry.islandCurveValueAtCoastUntunedUnmapped - tunedUnmappedCurveValueAtCoast;
+            falloff = tuningValueNumerator * falloff / (tuningValueNumerator + (1 - falloff) * tuningValueDenominator);
 
             value += falloff;
         }
-
-        // Under certain configurations, it is possible for multiple overlapping island falloffs to push this value above 1.
-        value = Math.min(1, value);
 
         return Mth.lerp(value, targetMin, targetMax);
     }
@@ -221,6 +234,60 @@ public class IslandContinentalNoise {
         });
     }
 
+    private void generateRefinedIslandEntrySubgrid(
+            CachedQueryableGrid2D.Vector subgridBasePosition, CachedQueryableGrid2D<RefinedIslandEntry>.SubgridGenerationEndpoint generationEndpoint) {
+
+        CachedQueryableGrid2D<ConfirmedIslandEntry>.QueriedView confirmedIslandEntryGridView = confirmedIslandGrid.query(
+                RoundedQueryShape.createForSubgrid(subgridBasePosition.x(), subgridBasePosition.z(), generationEndpoint.subgridWidth(), islandFalloffRadiusAtGridScale)
+        );
+
+        generationEndpoint.populateCells((confirmedCellX, confirmedCellZ, confirmedCellEntryIndex) -> {
+            ConfirmedIslandEntry confirmedEntry = confirmedIslandEntryGridView.get(confirmedCellX, confirmedCellZ, confirmedCellEntryIndex);
+            if (confirmedEntry == null) return null;
+
+            CachedQueryableGrid2D<ConfirmedIslandEntry>.QueriedView comparisonIslandEntryGridView = confirmedIslandEntryGridView.subQuery(
+                    RoundedQueryShape.createForPoint(confirmedCellX, confirmedCellZ, confirmedEntry.jitterX(), confirmedEntry.jitterZ(), islandFalloffRadiusAtGridScale)
+            );
+
+            // Choose the largest falloff radius (not exceeding islandFalloffRadiusAtGridScale)
+            // that does not cross the center of another island.
+            float islandFalloffRadiusSqAtGridScaleHere = islandFalloffRadiusAtGridScale * islandFalloffRadiusAtGridScale;
+            for (CachedQueryableGrid2D.GridCellInfo<ConfirmedIslandEntry> comparisonCellInfo : comparisonIslandEntryGridView) {
+                ConfirmedIslandEntry comparisonEntry = comparisonCellInfo.entry();
+                if (comparisonEntry == null) continue;
+
+                // Don't yield to oneself.
+                if (comparisonCellInfo.cellX() == confirmedCellX
+                        && comparisonCellInfo.cellZ() == confirmedCellZ
+                        && comparisonCellInfo.cellEntryIndex() == confirmedCellEntryIndex) continue;
+
+                float undisplacedDeltaX = comparisonCellInfo.cellX() - confirmedCellX;
+                float undisplacedDeltaZ = comparisonCellInfo.cellZ() - confirmedCellZ;
+                float displacementDeltaX = comparisonEntry.jitterX() - confirmedEntry.jitterX();
+                float displacementDeltaZ = comparisonEntry.jitterZ() - confirmedEntry.jitterZ();
+                float deltaX = undisplacedDeltaX + displacementDeltaX;
+                float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
+                float separationDistSq = Mth.square(deltaX) + Mth.square(deltaZ);
+
+                if (separationDistSq < islandFalloffRadiusSqAtGridScaleHere) {
+                    islandFalloffRadiusSqAtGridScaleHere = separationDistSq;
+                }
+            }
+
+            float islandCoastCurveInputSq = islandContinentalRadiusAtGridScaleSq / islandFalloffRadiusSqAtGridScaleHere;
+            float islandCurveValueAtCoastUntunedUnmappedBase = (1 - islandCoastCurveInputSq);
+            float islandCurveValueAtCoastUntunedUnmapped = cube(islandCurveValueAtCoastUntunedUnmappedBase);
+
+            return new RefinedIslandEntry(
+                    confirmedEntry.jitterX(),
+                    confirmedEntry.jitterZ(),
+                    islandFalloffRadiusSqAtGridScaleHere,
+                    1.0f / islandFalloffRadiusSqAtGridScaleHere,
+                    islandCurveValueAtCoastUntunedUnmapped
+            );
+        });
+    }
+
     private long hash(int cellX, int cellZ, int i) {
         long hash = seed ^ (cellX * PRIME_X) ^ (cellZ * PRIME_Z) ^ (i * PRIME_I);
         hash *= HASH_MULTIPLIER;
@@ -228,12 +295,16 @@ public class IslandContinentalNoise {
         return hash;
     }
 
-    private static double cube(double t) {
+    private static float cube(float t) {
         return (t * t) * t;
     }
 
-    private static float cube(float t) {
-        return (t * t) * t;
+    // https://www.desmos.com/calculator/iknm6tdprh
+    private static float computeTSquaredMultiplierForSmoothUnitRangeBoundCurve(float inputRange) {
+        return 1 - 1 / (inputRange * inputRange);
+    }
+    private static float smoothUnitRangeBoundCurve(float t, float tSquaredMultiplier) {
+        return t / Mth.sqrt(t * t * tSquaredMultiplier + 1);
     }
 
     public double minValue() {
@@ -253,13 +324,13 @@ public class IslandContinentalNoise {
                 Float.compare(that.targetMaxValueA, targetMaxValueA) == 0 &&
                 Float.compare(that.targetMinValueB, targetMinValueB) == 0 &&
                 Float.compare(that.targetMaxValueB, targetMaxValueB) == 0 &&
-                Float.compare(that.islandCurveValueAtCoastUntunedUnmapped, islandCurveValueAtCoastUntunedUnmapped) == 0 &&
+                Float.compare(that.islandContinentalRadiusAtGridScaleSq, islandContinentalRadiusAtGridScaleSq) == 0 &&
                 Double.compare(that.gridFrequency, gridFrequency) == 0 &&
                 Float.compare(that.islandFalloffRadiusAtGridScale, islandFalloffRadiusAtGridScale) == 0 &&
                 domainWarpNoise.equals(that.domainWarpNoise) && rangeVariationNoise.equals(that.rangeVariationNoise);
     }
 
     public int hashCode() {
-        return Objects.hash(super.hashCode(), seed, targetMinValueA, targetMaxValueA, targetMinValueB, targetMaxValueB, islandCurveValueAtCoastUntunedUnmapped, gridFrequency, islandFalloffRadiusAtGridScale, domainWarpNoise, rangeVariationNoise);
+        return Objects.hash(super.hashCode(), seed, targetMinValueA, targetMaxValueA, targetMinValueB, targetMaxValueB, islandContinentalRadiusAtGridScaleSq, gridFrequency, islandFalloffRadiusAtGridScale, domainWarpNoise, rangeVariationNoise);
     }
 }
