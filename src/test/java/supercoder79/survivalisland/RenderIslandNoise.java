@@ -5,7 +5,6 @@ import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 import supercoder79.survivalisland.config.ConfigData;
 import supercoder79.survivalisland.noise.IslandContinentalNoise;
 import supercoder79.survivalisland.noise.OctaveNoise;
-import supercoder79.survivalisland.noise.OctaveNoiseRecipe;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
