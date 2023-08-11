@@ -6,12 +6,13 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public final class OctaveNoise {
-    private static final double IDEAL_SLICE_OFFSET = Math.sqrt(3) / 6.0;
+    private static final double IDEAL_Y_OFFSET = Math.sqrt(3) / 4.0;
 
     private final long[] octaveSeeds;
     private final double horizontalFrequency;
     private final double verticalFrequency;
     private final float amplitude;
+    private final float firstOctaveAmplitude;
     private final double lacunarity;
     private final float persistence;
 
@@ -23,13 +24,18 @@ public final class OctaveNoise {
         this.persistence = persistence;
 
         this.octaveSeeds = new long[octaves];
+        double totalUnscaledAmplitude = 0.0;
+        double unscaledAmplitude = 1.0;
         for (int i = 0; i < octaves; i++) {
             this.octaveSeeds[i] = random.nextLong();
+            totalUnscaledAmplitude += unscaledAmplitude;
+            unscaledAmplitude *= persistence;
         }
+        this.firstOctaveAmplitude = (float)(amplitude / totalUnscaledAmplitude);
     }
 
     public float sample(double x, double z) {
-        return sample(x, IDEAL_SLICE_OFFSET, z);
+        return sample(x, 0, z);
     }
 
     public float sample(double x, double y, double z) {
@@ -39,10 +45,10 @@ public final class OctaveNoise {
         y *= this.verticalFrequency;
         z *= this.horizontalFrequency;
 
-        float amplitude = this.amplitude;
+        float amplitude = this.firstOctaveAmplitude;
 
         for (long octaveSeed : this.octaveSeeds) {
-            value += OpenSimplex2S.noise3_ImproveXZ(octaveSeed, x, y, z) * amplitude;
+            value += OpenSimplex2S.noise3_ImproveXZ(octaveSeed, x, y + IDEAL_Y_OFFSET, z) * amplitude;
 
             amplitude *= this.persistence;
 
@@ -55,7 +61,7 @@ public final class OctaveNoise {
     }
 
     public void sampleVector3(double x, double z, OpenSimplex2S.Vec3 destination) {
-        sampleVector3(x, IDEAL_SLICE_OFFSET, z, destination);
+        sampleVector3(x, IDEAL_Y_OFFSET, z, destination);
     }
 
     public void sampleVector3(double x, double y, double z, OpenSimplex2S.Vec3 destination) {
@@ -83,6 +89,10 @@ public final class OctaveNoise {
         }
 
         destination.set(resultX, resultY, resultZ);
+    }
+
+    public float amplitude() {
+        return amplitude;
     }
 
     @Override

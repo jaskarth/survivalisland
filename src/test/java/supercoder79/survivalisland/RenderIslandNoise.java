@@ -2,6 +2,7 @@ package supercoder79.survivalisland;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
+import supercoder79.survivalisland.config.ConfigData;
 import supercoder79.survivalisland.noise.IslandContinentalNoise;
 import supercoder79.survivalisland.noise.OctaveNoise;
 import supercoder79.survivalisland.noise.OctaveNoiseRecipe;
@@ -93,19 +94,21 @@ public class RenderIslandNoise {
         return 0xFF000000 | red | green | blue; //0xFF000000 for 100% Alpha. Bitwise OR everything together.
     }
 
-    private static OctaveNoise domainWarpNoise = new OctaveNoiseRecipe(1, 24, 24, 14, 1.9, 1.9).makeLive(new XoroshiroRandomSource(101));
-    private static OctaveNoise rangeVariationNoise = new OctaveNoiseRecipe(1, 280, 24, 1, 1.9, 1.9).makeLive(new XoroshiroRandomSource(102));
+    private static ConfigData configData = new ConfigData();
+
+    private static OctaveNoise domainWarpNoise = configData.domainWarpNoise.makeLive(new XoroshiroRandomSource(101));
+    private static OctaveNoise rangeVariationNoise =configData.rangeVariationNoise.makeLive(new XoroshiroRandomSource(102));
     private static final long SEED = 7;
 
-    private static final double ISLAND_RADIUS = 128.0;
-    private static final int ISLAND_SEPARATION_DISTANCE = 800;
+    private static final double ISLAND_RADIUS = configData.islandSize;
+    private static final int ISLAND_SEPARATION_DISTANCE = configData.islandSeperation;
 
-    private static final double ISLAND_UNDERWATER_FALLOFF_DISTANCE_RATIO_TO_SIZE = 9;
+    private static final double ISLAND_UNDERWATER_FALLOFF_DISTANCE_RATIO_TO_SIZE = configData.islandUnderwaterFalloffDistanceMultiplier;
 
-    private static final float TARGET_MIN_VALUE_A = -0.25f;
-    private static final float TARGET_MAX_VALUE_A = 0.7f;
-    private static final float TARGET_MIN_VALUE_B = -1.0f;
-    private static final float TARGET_MAX_VALUE_B = 1.4f;
+    private static final float TARGET_MIN_VALUE_A = configData.continentalTargetRangeA.min();
+    private static final float TARGET_MAX_VALUE_A = configData.continentalTargetRangeA.max();
+    private static final float TARGET_MIN_VALUE_B = configData.continentalTargetRangeB.min();
+    private static final float TARGET_MAX_VALUE_B = configData.continentalTargetRangeB.max();
 
     private static final IslandContinentalNoise ISLAND_CONTINENTAL_NOISE = new IslandContinentalNoise(SEED,
             ISLAND_RADIUS, ISLAND_SEPARATION_DISTANCE,
