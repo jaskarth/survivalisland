@@ -61,7 +61,7 @@ public final class OctaveNoise {
     }
 
     public void sampleVector3(double x, double z, OpenSimplex2S.Vec3 destination) {
-        sampleVector3(x, IDEAL_Y_OFFSET, z, destination);
+        sampleVector3(x, 0, z, destination);
     }
 
     public void sampleVector3(double x, double y, double z, OpenSimplex2S.Vec3 destination) {
