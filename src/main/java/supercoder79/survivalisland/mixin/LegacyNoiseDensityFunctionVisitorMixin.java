@@ -1,15 +1,13 @@
 package supercoder79.survivalisland.mixin;
 
-import net.minecraft.core.Registry;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
-import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.gen.noise.NoiseConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import supercoder79.survivalisland.world.util.SeedStealer;
 
-@Mixin(targets = {"net/minecraft/world/level/levelgen/RandomState$1NoiseWiringHelper"})
+@Mixin(targets = "net.minecraft.world.gen.noise.NoiseConfig$1NoiseWiringHelper")
 public class MixinNoiseWiringHelper implements SeedStealer {
     private long seed;
     @Inject(method = "<init>", at = @At("TAIL"))
