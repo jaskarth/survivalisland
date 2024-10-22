@@ -1,6 +1,6 @@
 package supercoder79.survivalisland.util;
 
-import net.minecraft.util.Mth;
+import net.minecraft.util.math.MathHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Array;
@@ -215,10 +215,10 @@ public class CachedQueryableGrid2D<TEntry> {
                 int subgridBaseX = firstSubgridBaseX + localGridOfSubgridsOffsetX;
                 int subgridBaseZ = firstSubgridBaseZ + localGridOfSubgridsOffsetZ;
 
-                subgridCellStartX = Mth.clamp(queryShape.cellXMin() - subgridBaseX, 0, subgridWidth - 1);
-                subgridCellStartZ = Mth.clamp(queryShape.cellZMin() - subgridBaseZ, 0, subgridWidth - 1);
-                subgridCellEndX   = Mth.clamp(queryShape.cellXMax() - subgridBaseX, 0, subgridWidth - 1);
-                subgridCellEndZ   = Mth.clamp(queryShape.cellZMax() - subgridBaseZ, 0, subgridWidth - 1);
+                subgridCellStartX = MathHelper.clamp(queryShape.cellXMin() - subgridBaseX, 0, subgridWidth - 1);
+                subgridCellStartZ = MathHelper.clamp(queryShape.cellZMin() - subgridBaseZ, 0, subgridWidth - 1);
+                subgridCellEndX   = MathHelper.clamp(queryShape.cellXMax() - subgridBaseX, 0, subgridWidth - 1);
+                subgridCellEndZ   = MathHelper.clamp(queryShape.cellZMax() - subgridBaseZ, 0, subgridWidth - 1);
 
                 subgridCellX = subgridCellStartX;
                 subgridCellZ = subgridCellStartZ;

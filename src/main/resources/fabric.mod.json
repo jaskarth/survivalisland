@@ -7,17 +7,18 @@
   "description": "Makes a configurable island generator!",
   "authors": [
     "SuperCoder79",
-    "FoundSpore"
+    "FoundSpore",
+    "Cyao (cheyao)"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": ""
+    "homepage": "https://modrinth.com/mod/survival-island",
+    "sources": "https://github.com/cheyao/survivalisland"
   },
 
-  "accessWidener" : "survivalisland.aw",
+  "accessWidener" : "survivalisland.accesswidener",
 
   "license": "LGPLv3",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/survivalisland/icon.png",
 
   "environment": "*",
   "entrypoints": {
@@ -32,6 +33,6 @@
   "depends": {
     "fabricloader": ">=0.7.2",
     "fabric": "*",
-    "minecraft": ">=1.15-"
+    "minecraft": ">=1.21.1"
   }
 }
