@@ -7,11 +7,12 @@
   "description": "Makes a configurable island generator!",
   "authors": [
     "SuperCoder79",
-    "FoundSpore"
+    "FoundSpore",
+    "Cyao (cheyao)"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": ""
+    "homepage": "https://modrinth.com/mod/survival-island",
+    "sources": "https://github.com/cheyao/survivalisland"
   },
 
   "accessWidener" : "survivalisland.accesswidener",
