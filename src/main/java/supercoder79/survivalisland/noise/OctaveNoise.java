@@ -1,6 +1,6 @@
 package supercoder79.survivalisland.noise;
 
-import net.minecraft.util.RandomSource;
+import net.minecraft.util.math.random.Random;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -16,7 +16,7 @@ public final class OctaveNoise {
     private final double lacunarity;
     private final float persistence;
 
-    public OctaveNoise(int octaves, RandomSource random, double horizontalFrequency, double verticalFrequency, double amplitude, double lacunarity, float persistence) {
+    public OctaveNoise(int octaves, Random random, double horizontalFrequency, double verticalFrequency, double amplitude, double lacunarity, float persistence) {
         this.horizontalFrequency = Double.isFinite(horizontalFrequency) ? horizontalFrequency : 0;
         this.verticalFrequency = Double.isFinite(verticalFrequency) ? verticalFrequency : 0;
         this.amplitude = (float)amplitude;

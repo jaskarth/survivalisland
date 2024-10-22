@@ -1,6 +1,6 @@
 package supercoder79.survivalisland.noise;
 
-import net.minecraft.util.RandomSource;
+import net.minecraft.util.math.random.Random;
 
 public final class OctaveNoiseRecipe2D {
     private static final double CONFIG_FREQUENCY_STANDARDIZATION_RESCALE = 0.5;
@@ -19,7 +19,7 @@ public final class OctaveNoiseRecipe2D {
         this.persistenceDivisor = persistenceDivisor;
     }
 
-    public OctaveNoise makeLive(RandomSource random) {
+    public OctaveNoise makeLive(Random random) {
         return new OctaveNoise(octaves, random, CONFIG_FREQUENCY_STANDARDIZATION_RESCALE / horizontalSpacing, 0.0, amplitude, lacunarity, (float)(1.0 / persistenceDivisor));
     }
 }

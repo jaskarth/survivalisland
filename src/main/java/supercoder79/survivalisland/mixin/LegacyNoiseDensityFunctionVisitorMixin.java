@@ -1,18 +1,22 @@
 package supercoder79.survivalisland.mixin;
 
-import net.minecraft.world.gen.noise.NoiseConfig;
+import net.minecraft.registry.RegistryEntryLookup;
+import net.minecraft.world.gen.chunk.ChunkGeneratorSettings;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import supercoder79.survivalisland.world.util.SeedStealer;
 
-@Mixin(targets = "net.minecraft.world.gen.noise.NoiseConfig$1NoiseWiringHelper")
-public class MixinNoiseWiringHelper implements SeedStealer {
+@Mixin(targets = "net.minecraft.world.gen.noise.NoiseConfig$1LegacyNoiseDensityFunctionVisitor")
+public class LegacyNoiseDensityFunctionVisitorMixin implements SeedStealer {
+    @Unique
     private long seed;
+
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void captureCtorForIsland(RandomState state, long l, boolean b, CallbackInfo ci) {
-        this.seed = l;
+    private void captureCtorForIsland(ChunkGeneratorSettings chunkGeneratorSettings, RegistryEntryLookup noiseParametersLookup, long seed, CallbackInfo ci) {
+        this.seed = seed;
     }
 
     @Override

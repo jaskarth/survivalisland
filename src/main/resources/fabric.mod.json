@@ -14,10 +14,10 @@
     "sources": ""
   },
 
-  "accessWidener" : "survivalisland.aw",
+  "accessWidener" : "survivalisland.accesswidener",
 
   "license": "LGPLv3",
-  "icon": "assets/modid/icon.png",
+  "icon": "assets/survivalisland/icon.png",
 
   "environment": "*",
   "entrypoints": {
@@ -32,6 +32,6 @@
   "depends": {
     "fabricloader": ">=0.7.2",
     "fabric": "*",
-    "minecraft": ">=1.15-"
+    "minecraft": ">=1.21.1"
   }
 }

@@ -1,10 +1,9 @@
 package supercoder79.survivalisland.noise;
 
-import net.minecraft.util.Mth;
+import net.minecraft.util.math.MathHelper;
 import supercoder79.survivalisland.util.CachedQueryableGrid2D;
 import supercoder79.survivalisland.util.RoundedQueryShape;
 
-import javax.annotation.Nonnull;
 import java.util.Objects;
 
 public class IslandContinentalNoise {
@@ -17,7 +16,7 @@ public class IslandContinentalNoise {
     private static final int CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT = 2;
 
     // These values seemed to make things look good.
-    private static final double GRID_CELL_SIZE_SPACING_MULTIPLIER = Math.sqrt(2);
+    private static final double GRID_CELL_SIZE_SPACING_MULTIPLIER = MathHelper.sqrt(2);
     private static final int ISLAND_PLACEMENT_ATTEMPT_COUNT_PER_CELL = 3;
 
     private final long seed;
@@ -55,8 +54,8 @@ public class IslandContinentalNoise {
                                   float targetMinValueA, float targetMaxValueA,
                                   float targetMinValueB, float targetMaxValueB,
                                   double underwaterFalloffDistanceRatioToRadius,
-                                  @Nonnull OctaveNoise domainWarpNoise,
-                                  @Nonnull OctaveNoise rangeVariationNoise
+                                  OctaveNoise domainWarpNoise,
+                                  OctaveNoise rangeVariationNoise
     ) {
         this.seed = seed;
 
@@ -83,12 +82,12 @@ public class IslandContinentalNoise {
 
         double islandSeparationDistanceAtGridScale = islandSeparationDistance / gridCellSize;
         this.islandSeparationDistanceAtGridScale = (float)islandSeparationDistanceAtGridScale;
-        int islandSeparationSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandSeparationDistanceAtGridScale)) +
+        int islandSeparationSearchSubgridWidthExponent = MathHelper.ceilLog2(MathHelper.ceil(islandSeparationDistanceAtGridScale)) +
                 CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
 
         double islandFalloffRadiusAtGridScale = totalFalloffDistance / gridCellSize;
         this.islandFalloffRadiusAtGridScale = (float)islandFalloffRadiusAtGridScale;
-        int islandFalloffRadiusSearchSubgridWidthExponent = Mth.ceillog2(Mth.ceil(islandFalloffRadiusAtGridScale)) +
+        int islandFalloffRadiusSearchSubgridWidthExponent = MathHelper.ceilLog2(MathHelper.ceil(islandFalloffRadiusAtGridScale)) +
                 CACHE_SUBGRID_WIDTH_MULTIPLIER_EXPONENT;
 
         prospectiveIslandGrid = new CachedQueryableGrid2D<>(
@@ -130,16 +129,16 @@ public class IslandContinentalNoise {
         x *= gridFrequency;
         z *= gridFrequency;
 
-        int xBase = Mth.floor(x);
-        int zBase = Mth.floor(z);
+        int xBase = MathHelper.floor(x);
+        int zBase = MathHelper.floor(z);
         float xInsideCell = (float)(x - xBase);
         float zInsideCell = (float)(z - zBase);
 
-        float targetMin = Mth.lerp(rangeVariationNoiseValue, targetMinValueA, targetMinValueB);
-        float targetMax = Mth.lerp(rangeVariationNoiseValue, targetMaxValueA, targetMaxValueB);
+        float targetMin = MathHelper.lerp(rangeVariationNoiseValue, targetMinValueA, targetMinValueB);
+        float targetMax = MathHelper.lerp(rangeVariationNoiseValue, targetMaxValueA, targetMaxValueB);
 
         // Given that the curve will be mapped from [0, 1] to [targetMin, targetMax], which unmapped value will occur at the coastline?
-        float tunedUnmappedCurveValueAtCoast = Mth.inverseLerp(0, targetMin, targetMax);
+        float tunedUnmappedCurveValueAtCoast = MathHelper.getLerpProgress(0, targetMin, targetMax);
 
         float value = 0;
 
@@ -158,7 +157,7 @@ public class IslandContinentalNoise {
             float deltaX = undisplacedDeltaX + displacementDeltaX;
             float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
 
-            float distSqToIslandCenter = Mth.square(deltaX) + Mth.square(deltaZ);
+            float distSqToIslandCenter = MathHelper.square(deltaX) + MathHelper.square(deltaZ);
             if (distSqToIslandCenter >= cellEntry.falloffRadiusAtGridScaleSq) continue;
 
             float distSqScaled = distSqToIslandCenter * cellEntry.inverseFalloffRadiusAtGridScaleSq;
@@ -173,7 +172,7 @@ public class IslandContinentalNoise {
             value += falloff;
         }
 
-        return Mth.lerp(value, targetMin, targetMax);
+        return MathHelper.lerp(value, targetMin, targetMax);
     }
 
     private void generateProspectiveIslandEntrySubgrid(
@@ -221,7 +220,7 @@ public class IslandContinentalNoise {
                 float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
 
                 // Check the separation distance for a conflict. If there was one, don't return an entry for this cell..
-                float separationDistSq = Mth.square(deltaX) + Mth.square(deltaZ);
+                float separationDistSq = MathHelper.square(deltaX) + MathHelper.square(deltaZ);
                 if (separationDistSq < islandSeparationDistanceAtGridScale * islandSeparationDistanceAtGridScale) {
                     return null;
                 }
@@ -267,7 +266,7 @@ public class IslandContinentalNoise {
                 float displacementDeltaZ = comparisonEntry.jitterZ() - confirmedEntry.jitterZ();
                 float deltaX = undisplacedDeltaX + displacementDeltaX;
                 float deltaZ = undisplacedDeltaZ + displacementDeltaZ;
-                float separationDistSq = Mth.square(deltaX) + Mth.square(deltaZ);
+                float separationDistSq = MathHelper.square(deltaX) + MathHelper.square(deltaZ);
 
                 if (separationDistSq < islandFalloffRadiusSqAtGridScaleHere) {
                     islandFalloffRadiusSqAtGridScaleHere = separationDistSq;
@@ -304,7 +303,7 @@ public class IslandContinentalNoise {
         return 1 - 1 / (inputRange * inputRange);
     }
     private static float smoothUnitRangeBoundCurve(float t, float tSquaredMultiplier) {
-        return t / Mth.sqrt(t * t * tSquaredMultiplier + 1);
+        return t / MathHelper.sqrt(t * t * tSquaredMultiplier + 1);
     }
 
     public double minValue() {

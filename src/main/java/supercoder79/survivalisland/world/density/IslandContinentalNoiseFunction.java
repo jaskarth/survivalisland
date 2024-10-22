@@ -1,11 +1,11 @@
 package supercoder79.survivalisland.world.density;
 
-import com.mojang.serialization.Codec;
-import net.minecraft.util.KeyDispatchDataCodec;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.levelgen.DensityFunction;
-import net.minecraft.world.level.levelgen.PositionalRandomFactory;
-import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.util.dynamic.CodecHolder;
+import net.minecraft.util.math.random.Random;
+import net.minecraft.world.gen.densityfunction.DensityFunction;
+import net.minecraft.util.math.random.RandomSplitter;
+import net.minecraft.util.math.random.Xoroshiro128PlusPlusRandom;
 import supercoder79.survivalisland.SurvivalIsland;
 import supercoder79.survivalisland.noise.IslandContinentalNoise;
 import supercoder79.survivalisland.noise.OctaveNoise;
@@ -15,8 +15,8 @@ import supercoder79.survivalisland.world.util.SeedStealer;
 import java.util.Objects;
 
 public class IslandContinentalNoiseFunction implements DensityFunction {
-    public static final Codec<IslandContinentalNoiseFunction> UCODEC = Codec.unit(IslandContinentalNoiseFunction::new);
-    public static final KeyDispatchDataCodec<IslandContinentalNoiseFunction> CODEC = KeyDispatchDataCodec.of(UCODEC);
+    public static final MapCodec<IslandContinentalNoiseFunction> UCODEC = MapCodec.unit(IslandContinentalNoiseFunction::new);
+    public static final CodecHolder<IslandContinentalNoiseFunction> CODEC = CodecHolder.of(UCODEC);
 
     private static final ConcurrentLinkedHashCache<IslandContinentalNoise, IslandContinentalNoise> ISLAND_CONTINENTAL_NOISE_INSTANCE_CACHE =
             new ConcurrentLinkedHashCache<>(1, Integer.MAX_VALUE, 512);
@@ -28,10 +28,10 @@ public class IslandContinentalNoiseFunction implements DensityFunction {
     }
 
     public IslandContinentalNoiseFunction(long seed) {
-        RandomSource random = new XoroshiroRandomSource(seed);
-        PositionalRandomFactory positionalRandomFactory = random.forkPositional();
-        OctaveNoise domainWarpNoise = SurvivalIsland.CONFIG.domainWarpNoise.makeLive(positionalRandomFactory.fromHashOf("domain_warp_noise"));
-        OctaveNoise rangeVariationNoise = SurvivalIsland.CONFIG.rangeVariationNoise.makeLive(positionalRandomFactory.fromHashOf("range_variation_noise"));
+        Random random = new Xoroshiro128PlusPlusRandom(seed);
+        RandomSplitter positionalRandomFactory = random.nextSplitter();
+        OctaveNoise domainWarpNoise = SurvivalIsland.CONFIG.domainWarpNoise.makeLive(positionalRandomFactory.split("domain_warp_noise"));
+        OctaveNoise rangeVariationNoise = SurvivalIsland.CONFIG.rangeVariationNoise.makeLive(positionalRandomFactory.split("range_variation_noise"));
         IslandContinentalNoise islandContinentalNoise = new IslandContinentalNoise(seed,
                 SurvivalIsland.CONFIG.islandSize, SurvivalIsland.CONFIG.islandSeperation,
                 SurvivalIsland.CONFIG.continentalTargetRangeA.min(), SurvivalIsland.CONFIG.continentalTargetRangeA.max(),
@@ -43,13 +43,13 @@ public class IslandContinentalNoiseFunction implements DensityFunction {
     }
 
     @Override
-    public double compute(FunctionContext ctx) {
+    public double sample(NoisePos ctx) {
         return islandContinentalNoise.compute(ctx.blockX(), ctx.blockZ());
     }
 
     @Override
-    public void fillArray(double[] ds, ContextProvider contextProvider) {
-        contextProvider.fillAllDirectly(ds, this);
+    public void fill(double[] ds, EachApplier contextProvider) {
+        contextProvider.fill(ds, this);
     }
 
     private static IslandContinentalNoiseFunction fork(long seed) {
@@ -57,7 +57,7 @@ public class IslandContinentalNoiseFunction implements DensityFunction {
     }
 
     @Override
-    public DensityFunction mapAll(Visitor visitor) {
+    public DensityFunction apply(DensityFunctionVisitor visitor) {
         if (visitor instanceof SeedStealer seed) {
             return fork(seed.steal());
         }
@@ -75,7 +75,7 @@ public class IslandContinentalNoiseFunction implements DensityFunction {
     }
 
     @Override
-    public KeyDispatchDataCodec<? extends DensityFunction> codec() {
+    public CodecHolder<? extends DensityFunction> getCodecHolder() {
         return CODEC;
     }
 
