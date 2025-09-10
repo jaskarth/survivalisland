@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.jaskarth.survivalisland.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "MixinNoiseWiringHelper"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

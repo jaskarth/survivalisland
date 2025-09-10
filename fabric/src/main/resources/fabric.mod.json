@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "survivalisland",
+  "version": "${version}",
+
+  "name": "Survival Island",
+  "description": "Makes a configurable island generator!",
+  "authors": [
+    "jaskarth",
+    "FoundSpore"
+  ],
+  "license": "LGPLv3",
+  "icon": "assets/modid/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.jaskarth.survivalisland.SurvivalIslandFabric"
+    ]
+  },
+  "mixins": [
+    "survivalisland.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.7.2",
+    "fabric": "*",
+    "minecraft": ">=1.20"
+  }
+}

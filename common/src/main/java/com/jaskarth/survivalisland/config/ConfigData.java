@@ -1,7 +1,7 @@
-package supercoder79.survivalisland.config;
+package com.jaskarth.survivalisland.config;
 
-import supercoder79.survivalisland.noise.OctaveNoiseRecipe2D;
-import supercoder79.survivalisland.util.FloatRange;
+import com.jaskarth.survivalisland.noise.OctaveNoiseRecipe2D;
+import com.jaskarth.survivalisland.util.FloatRange;
 
 public class ConfigData {
     public double islandSize = 128.0;
