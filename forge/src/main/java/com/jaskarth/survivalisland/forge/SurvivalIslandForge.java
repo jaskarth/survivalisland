@@ -2,22 +2,20 @@ package com.jaskarth.survivalisland.forge;
 
 import com.jaskarth.survivalisland.SurvivalIsland;
 import com.mojang.logging.LogUtils;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.RegisterEvent;
 import com.jaskarth.survivalisland.forge.world.IslandDensityFunctions;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(SurvivalIsland.ID)
 public class SurvivalIslandForge extends SurvivalIsland {
 
-    public SurvivalIslandForge() {
+    public SurvivalIslandForge(IEventBus modEventBus, ModContainer container) {
         super.init();
-
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
@@ -27,7 +25,7 @@ public class SurvivalIslandForge extends SurvivalIsland {
         IslandDensityFunctions.init();
 
         // Register ourselves for server and other game events we are interested in
-        MinecraftForge.EVENT_BUS.register(this);
+//        NeoForge.EVENT_BUS.register(this);
     }
 
     private void registerFunctions(RegisterEvent event) {

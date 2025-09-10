@@ -1,6 +1,7 @@
 package com.jaskarth.survivalisland.world.density;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.util.KeyDispatchDataCodec;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.DensityFunction;
@@ -15,7 +16,7 @@ import com.jaskarth.survivalisland.world.util.SeedStealer;
 import java.util.Objects;
 
 public class IslandContinentalNoiseFunction implements DensityFunction {
-    public static final Codec<IslandContinentalNoiseFunction> UCODEC = Codec.unit(IslandContinentalNoiseFunction::new);
+    public static final MapCodec<IslandContinentalNoiseFunction> UCODEC = MapCodec.unit(IslandContinentalNoiseFunction::new);
     public static final KeyDispatchDataCodec<IslandContinentalNoiseFunction> CODEC = KeyDispatchDataCodec.of(UCODEC);
 
     private static final ConcurrentLinkedHashCache<IslandContinentalNoise, IslandContinentalNoise> ISLAND_CONTINENTAL_NOISE_INSTANCE_CACHE =

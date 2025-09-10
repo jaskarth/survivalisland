@@ -4,10 +4,10 @@
   "version": "${version}",
 
   "name": "Survival Island",
-  "description": "Makes a configurable island generator!",
+  "description": "A configurable island generator!",
   "authors": [
     "jaskarth",
-    "FoundSpore"
+    "CorgiTaco"
   ],
   "license": "LGPLv3",
   "icon": "assets/modid/icon.png",
